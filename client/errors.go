@@ -32,6 +32,7 @@ const (
 	errOperationNotPermittedOnNamelessCols string = "operation not permitted on nameless collection"
 	errInvalidJSONPayload                  string = "invalid JSON payload"
 	errCanNotNormalizeValue                string = "can not normalize value"
+	errCanNotNormalizeValueOfKind          string = "can not normalize value of kind"
 	errCanNotTurnNormalValueIntoArray      string = "can not turn normal value into array"
 	errCanNotMakeNormalNilFromFieldKind    string = "can not make normal nil from field kind"
 )
@@ -55,6 +56,7 @@ var (
 	ErrInvalidDocIDVersion                 = errors.New("invalid document ID version")
 	ErrInvalidJSONPayload                  = errors.New(errInvalidJSONPayload)
 	ErrCanNotNormalizeValue                = errors.New(errCanNotNormalizeValue)
+	ErrCanNotNormalizeValueOfKind          = errors.New(errCanNotNormalizeValueOfKind)
 	ErrCanNotTurnNormalValueIntoArray      = errors.New(errCanNotTurnNormalValueIntoArray)
 	ErrCanNotMakeNormalNilFromFieldKind    = errors.New(errCanNotMakeNormalNilFromFieldKind)
 )
@@ -84,6 +86,12 @@ func NewErrUnexpectedType[TExpected any](property string, actual any) error {
 // NewCanNotNormalizeValue returns an error indicating that the given value can not be normalized.
 func NewCanNotNormalizeValue(val any) error {
 	return errors.New(errCanNotNormalizeValue, errors.NewKV("Value", val))
+}
+
+// NewCanNotNormalizeValueOfKind returns an error indicating that the given value can not be normalized
+// to the given kind.
+func NewCanNotNormalizeValueOfKind(val any, kind FieldKind) error {
+	return errors.New(errCanNotNormalizeValueOfKind, errors.NewKV("Value", val), errors.NewKV("Kind", kind))
 }
 
 // NewCanNotTurnNormalValueIntoArray returns an error indicating that the given value can not be

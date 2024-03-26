@@ -226,28 +226,55 @@ func (k ObjectArrayKind) MarshalJSON() ([]byte, error) {
 
 // Note: These values are serialized and persisted in the database, avoid modifying existing values.
 const (
-	FieldKind_None                  ScalarKind      = 0
-	FieldKind_DocID                 ScalarKind      = 1
-	FieldKind_NILLABLE_BOOL         ScalarKind      = 2
-	FieldKind_BOOL_ARRAY            ScalarArrayKind = 3
-	FieldKind_NILLABLE_INT          ScalarKind      = 4
-	FieldKind_INT_ARRAY             ScalarArrayKind = 5
-	FieldKind_NILLABLE_FLOAT        ScalarKind      = 6
-	FieldKind_FLOAT_ARRAY           ScalarArrayKind = 7
-	_                               ScalarKind      = 8 // safe to repurpose (was never used)
-	_                               ScalarKind      = 9 // safe to repurpose (previously old field)
-	FieldKind_NILLABLE_DATETIME     ScalarKind      = 10
-	FieldKind_NILLABLE_STRING       ScalarKind      = 11
-	FieldKind_STRING_ARRAY          ScalarArrayKind = 12
-	FieldKind_NILLABLE_BLOB         ScalarKind      = 13
-	FieldKind_NILLABLE_JSON         ScalarKind      = 14
-	_                               ScalarKind      = 15 // safe to repurpose (was never used)
-	_                               ScalarKind      = 16 // Deprecated 2024-03-15, was FieldKind_FOREIGN_OBJECT
-	_                               ScalarKind      = 17 // Deprecated 2024-03-15, was FieldKind_FOREIGN_OBJECT_ARRAY
-	FieldKind_NILLABLE_BOOL_ARRAY   ScalarArrayKind = 18
-	FieldKind_NILLABLE_INT_ARRAY    ScalarArrayKind = 19
-	FieldKind_NILLABLE_FLOAT_ARRAY  ScalarArrayKind = 20
-	FieldKind_NILLABLE_STRING_ARRAY ScalarArrayKind = 21
+	FieldKind_None                             ScalarKind      = 0
+	FieldKind_DocID                            ScalarKind      = 1
+	FieldKind_NILLABLE_BOOL                    ScalarKind      = 2
+	FieldKind_BOOL_ARRAY                       ScalarArrayKind = 3
+	FieldKind_NILLABLE_INT                     ScalarKind      = 4
+	FieldKind_INT_ARRAY                        ScalarArrayKind = 5
+	FieldKind_NILLABLE_FLOAT                   ScalarKind      = 6
+	FieldKind_FLOAT_ARRAY                      ScalarArrayKind = 7
+	_                                          ScalarKind      = 8 // safe to repurpose (was never used)
+	_                                          ScalarKind      = 9 // safe to repurpose (previously old field)
+	FieldKind_NILLABLE_DATETIME                ScalarKind      = 10
+	FieldKind_NILLABLE_STRING                  ScalarKind      = 11
+	FieldKind_STRING_ARRAY                     ScalarArrayKind = 12
+	FieldKind_NILLABLE_BLOB                    ScalarKind      = 13
+	FieldKind_NILLABLE_JSON                    ScalarKind      = 14
+	_                                          ScalarKind      = 15 // safe to repurpose (was never used)
+	_                                          ScalarKind      = 16 // Deprecated 2024-03-15, was FieldKind_FOREIGN_OBJECT
+	_                                          ScalarKind      = 17 // Deprecated 2024-03-15, was FieldKind_FOREIGN_OBJECT_ARRAY
+	FieldKind_NILLABLE_BOOL_ARRAY              ScalarArrayKind = 18
+	FieldKind_NILLABLE_INT_ARRAY               ScalarArrayKind = 19
+	FieldKind_NILLABLE_FLOAT_ARRAY             ScalarArrayKind = 20
+	FieldKind_NILLABLE_STRING_ARRAY            ScalarArrayKind = 21
+	FieldKind_NILLABLE_DATETIME_ARRAY          ScalarArrayKind = 22
+	FieldKind_NILLABLE_BLOB_ARRAY              ScalarArrayKind = 23
+	FieldKind_NILLABLE_JSON_ARRAY              ScalarArrayKind = 24
+	FieldKind_BOOL                             ScalarKind      = 25
+	FieldKind_INT                              ScalarKind      = 26
+	FieldKind_FLOAT                            ScalarKind      = 27
+	FieldKind_STRING                           ScalarKind      = 28
+	FieldKind_DATETIME                         ScalarKind      = 29
+	FieldKind_BLOB                             ScalarKind      = 30
+	FieldKind_JSON                             ScalarKind      = 31
+	FieldKind_BOOL_NILLABLE_ARRAY              ScalarArrayKind = 32
+	FieldKind_INT_NILLABLE_ARRAY               ScalarArrayKind = 33
+	FieldKind_FLOAT_NILLABLE_ARRAY             ScalarArrayKind = 34
+	FieldKind_STRING_NILLABLE_ARRAY            ScalarArrayKind = 35
+	FieldKind_DATETIME_NILLABLE_ARRAY          ScalarArrayKind = 36
+	FieldKind_BLOB_NILLABLE_ARRAY              ScalarArrayKind = 37
+	FieldKind_JSON_NILLABLE_ARRAY              ScalarArrayKind = 38
+	FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY     ScalarArrayKind = 39
+	FieldKind_NILLABLE_INT_NILLABLE_ARRAY      ScalarArrayKind = 40
+	FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY    ScalarArrayKind = 41
+	FieldKind_NILLABLE_STRING_NILLABLE_ARRAY   ScalarArrayKind = 42
+	FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY ScalarArrayKind = 43
+	FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY     ScalarArrayKind = 44
+	FieldKind_NILLABLE_JSON_NILLABLE_ARRAY     ScalarArrayKind = 45
+	FieldKind_DATETIME_ARRAY                   ScalarArrayKind = 46
+	FieldKind_BLOB_ARRAY                       ScalarArrayKind = 47
+	FieldKind_JSON_ARRAY                       ScalarArrayKind = 48
 )
 
 // FieldKindStringToEnumMapping maps string representations of [FieldKind] values to
