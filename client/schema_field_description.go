@@ -146,6 +146,40 @@ func (k ScalarKind) IsArray() bool {
 	return false
 }
 
+func (k ScalarKind) ToArray() ScalarArrayKind {
+	switch k {
+	case FieldKind_BOOL:
+		return FieldKind_BOOL_ARRAY
+	case FieldKind_INT:
+		return FieldKind_INT_ARRAY
+	case FieldKind_FLOAT:
+		return FieldKind_FLOAT_ARRAY
+	case FieldKind_STRING:
+		return FieldKind_STRING_ARRAY
+	case FieldKind_JSON:
+		return FieldKind_JSON_ARRAY
+	case FieldKind_BLOB:
+		return FieldKind_BLOB_ARRAY
+	case FieldKind_DATETIME:
+		return FieldKind_DATETIME_ARRAY
+	case FieldKind_NILLABLE_BOOL:
+		return FieldKind_BOOL_NILLABLE_ARRAY
+	case FieldKind_NILLABLE_INT:
+		return FieldKind_INT_NILLABLE_ARRAY
+	case FieldKind_NILLABLE_FLOAT:
+		return FieldKind_FLOAT_NILLABLE_ARRAY
+	case FieldKind_NILLABLE_STRING:
+		return FieldKind_STRING_NILLABLE_ARRAY
+	case FieldKind_NILLABLE_JSON:
+		return FieldKind_JSON_NILLABLE_ARRAY
+	case FieldKind_NILLABLE_BLOB:
+		return FieldKind_BLOB_NILLABLE_ARRAY
+	case FieldKind_NILLABLE_DATETIME:
+		return FieldKind_DATETIME_NILLABLE_ARRAY
+	}
+	return ScalarArrayKind(0)
+}
+
 func (k ScalarArrayKind) String() string {
 	switch k {
 	case FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY:
@@ -440,8 +474,18 @@ func (f *SchemaFieldDescription) UnmarshalJSON(bytes []byte) error {
 		}
 		switch intKind {
 		case uint8(FieldKind_BOOL_ARRAY), uint8(FieldKind_INT_ARRAY), uint8(FieldKind_FLOAT_ARRAY),
-			uint8(FieldKind_STRING_ARRAY), uint8(FieldKind_NILLABLE_BOOL_ARRAY), uint8(FieldKind_NILLABLE_INT_ARRAY),
-			uint8(FieldKind_NILLABLE_FLOAT_ARRAY), uint8(FieldKind_NILLABLE_STRING_ARRAY):
+			uint8(FieldKind_STRING_ARRAY), uint8(FieldKind_JSON_ARRAY), uint8(FieldKind_BLOB_ARRAY),
+			uint8(FieldKind_DATETIME_ARRAY), uint8(FieldKind_NILLABLE_BOOL_ARRAY),
+			uint8(FieldKind_NILLABLE_INT_ARRAY), uint8(FieldKind_NILLABLE_FLOAT_ARRAY),
+			uint8(FieldKind_NILLABLE_STRING_ARRAY), uint8(FieldKind_NILLABLE_JSON_ARRAY),
+			uint8(FieldKind_NILLABLE_BLOB_ARRAY), uint8(FieldKind_NILLABLE_DATETIME_ARRAY),
+			uint8(FieldKind_BOOL_NILLABLE_ARRAY), uint8(FieldKind_INT_NILLABLE_ARRAY),
+			uint8(FieldKind_FLOAT_NILLABLE_ARRAY), uint8(FieldKind_STRING_NILLABLE_ARRAY),
+			uint8(FieldKind_JSON_NILLABLE_ARRAY), uint8(FieldKind_BLOB_NILLABLE_ARRAY),
+			uint8(FieldKind_DATETIME_NILLABLE_ARRAY), uint8(FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY),
+			uint8(FieldKind_NILLABLE_INT_NILLABLE_ARRAY), uint8(FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY),
+			uint8(FieldKind_NILLABLE_STRING_NILLABLE_ARRAY), uint8(FieldKind_NILLABLE_JSON_NILLABLE_ARRAY),
+			uint8(FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY), uint8(FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY):
 			f.Kind = ScalarArrayKind(intKind)
 		default:
 			f.Kind = ScalarKind(intKind)

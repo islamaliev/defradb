@@ -474,7 +474,14 @@ func (g *Generator) buildTypes(
 					ttype = gql.NewList(t)
 				} else {
 					var ok bool
-					ttype, ok = fieldKindToGQLType[field.Kind]
+					k := field.Kind
+					mm := fieldKindToGQLType
+					ttype, ok = mm[k]
+					dd, okk := mm[client.FieldKind_BOOL_NILLABLE_ARRAY]
+					okk = okk
+					dd = dd
+					eq := k == client.FieldKind_BOOL_NILLABLE_ARRAY
+					eq = eq
 					if !ok {
 						return nil, NewErrTypeNotFound(fmt.Sprint(field.Kind))
 					}

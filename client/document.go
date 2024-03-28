@@ -206,14 +206,14 @@ func validateFieldSchema(val any, field SchemaFieldDescription) (NormalValue, er
 		}
 		return NewNormalString(v), nil
 
-	case FieldKind_STRING_ARRAY:
+	case FieldKind_STRING_NILLABLE_ARRAY:
 		v, err := getArray(val, getString)
 		if err != nil {
 			return nil, err
 		}
 		return NewNormalStringArray(v), nil
 
-	case FieldKind_NILLABLE_STRING_ARRAY:
+	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY:
 		v, err := getNillableArray(val, getString)
 		if err != nil {
 			return nil, err
@@ -234,7 +234,14 @@ func validateFieldSchema(val any, field SchemaFieldDescription) (NormalValue, er
 		}
 		return NewNormalBoolArray(v), nil
 
-	case FieldKind_NILLABLE_BOOL_ARRAY:
+	case FieldKind_BOOL_NILLABLE_ARRAY:
+		v, err := getArray(val, getBool)
+		if err != nil {
+			return nil, err
+		}
+		return NewNormalBoolArray(v), nil
+
+	case FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY:
 		v, err := getNillableArray(val, getBool)
 		if err != nil {
 			return nil, err
@@ -248,14 +255,14 @@ func validateFieldSchema(val any, field SchemaFieldDescription) (NormalValue, er
 		}
 		return NewNormalFloat(v), nil
 
-	case FieldKind_FLOAT_ARRAY:
+	case FieldKind_FLOAT_NILLABLE_ARRAY:
 		v, err := getArray(val, getFloat64)
 		if err != nil {
 			return nil, err
 		}
 		return NewNormalFloatArray(v), nil
 
-	case FieldKind_NILLABLE_FLOAT_ARRAY:
+	case FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY:
 		v, err := getNillableArray(val, getFloat64)
 		if err != nil {
 			return nil, err
@@ -276,14 +283,14 @@ func validateFieldSchema(val any, field SchemaFieldDescription) (NormalValue, er
 		}
 		return NewNormalInt(v), nil
 
-	case FieldKind_INT_ARRAY:
+	case FieldKind_INT_NILLABLE_ARRAY:
 		v, err := getArray(val, getInt64)
 		if err != nil {
 			return nil, err
 		}
 		return NewNormalIntArray(v), nil
 
-	case FieldKind_NILLABLE_INT_ARRAY:
+	case FieldKind_NILLABLE_INT_NILLABLE_ARRAY:
 		v, err := getNillableArray(val, getInt64)
 		if err != nil {
 			return nil, err

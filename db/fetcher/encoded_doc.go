@@ -60,7 +60,13 @@ func (e encProperty) Decode() (any, error) {
 		return nil, err
 	}
 
-	return core.NormalizeFieldValue(e.Desc, val)
+	nv, err := client.NewNormalValue(val, e.Desc.Kind)
+	if err != nil {
+		return nil, err
+	}
+	return nv.Unwrap(), nil
+
+	//return core.NormalizeFieldValue(e.Desc, val)
 }
 
 // @todo: Implement Encoded Document type

@@ -660,7 +660,14 @@ func (f *IndexFetcher) determineFieldFilterConditions() ([]fieldFilterCond, erro
 			condMap := indexFilterCond.(map[connor.FilterKey]any)
 			for key, filterVal := range condMap {
 				opKey := key.(*mapper.Operator)
-				normalVal, err := client.NewNormalValue(filterVal, f.indexedFields[i].Kind)
+				kind := f.indexedFields[i].Kind
+				if opKey.Operation == opIn || opKey.Operation == opNin {
+					if k, ok := kind.(client.ScalarKind); ok {
+						kind = k.ToArray()
+					}
+				}
+
+				normalVal, err := client.NewNormalValue(filterVal, kind)
 				if err != nil {
 					return nil, err
 				}

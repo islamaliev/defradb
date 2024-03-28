@@ -31,7 +31,7 @@ func NormalizeFieldValue(fieldDesc client.FieldDefinition, val any) (any, error)
 	if array, isArray := val.([]any); isArray {
 		var ok bool
 		switch fieldDesc.Kind {
-		case client.FieldKind_BOOL_ARRAY:
+		case client.FieldKind_BOOL_NILLABLE_ARRAY:
 			boolArray := make([]bool, len(array))
 			for i, untypedValue := range array {
 				boolArray[i], ok = untypedValue.(bool)
@@ -41,13 +41,13 @@ func NormalizeFieldValue(fieldDesc client.FieldDefinition, val any) (any, error)
 			}
 			val = boolArray
 
-		case client.FieldKind_NILLABLE_BOOL_ARRAY:
+		case client.FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY:
 			val, err = convertNillableArray[bool](fieldDesc.Name, array)
 			if err != nil {
 				return nil, err
 			}
 
-		case client.FieldKind_INT_ARRAY:
+		case client.FieldKind_INT_NILLABLE_ARRAY:
 			intArray := make([]int64, len(array))
 			for i, untypedValue := range array {
 				intArray[i], err = convertToInt(fmt.Sprintf("%s[%v]", fieldDesc.Name, i), untypedValue)
@@ -57,13 +57,13 @@ func NormalizeFieldValue(fieldDesc client.FieldDefinition, val any) (any, error)
 			}
 			val = intArray
 
-		case client.FieldKind_NILLABLE_INT_ARRAY:
+		case client.FieldKind_NILLABLE_INT_NILLABLE_ARRAY:
 			val, err = convertNillableArrayWithConverter(fieldDesc.Name, array, convertToInt)
 			if err != nil {
 				return nil, err
 			}
 
-		case client.FieldKind_FLOAT_ARRAY:
+		case client.FieldKind_FLOAT_NILLABLE_ARRAY:
 			floatArray := make([]float64, len(array))
 			for i, untypedValue := range array {
 				floatArray[i], ok = untypedValue.(float64)
@@ -73,13 +73,13 @@ func NormalizeFieldValue(fieldDesc client.FieldDefinition, val any) (any, error)
 			}
 			val = floatArray
 
-		case client.FieldKind_NILLABLE_FLOAT_ARRAY:
+		case client.FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY:
 			val, err = convertNillableArray[float64](fieldDesc.Name, array)
 			if err != nil {
 				return nil, err
 			}
 
-		case client.FieldKind_STRING_ARRAY:
+		case client.FieldKind_STRING_NILLABLE_ARRAY:
 			stringArray := make([]string, len(array))
 			for i, untypedValue := range array {
 				stringArray[i], ok = untypedValue.(string)
@@ -89,7 +89,7 @@ func NormalizeFieldValue(fieldDesc client.FieldDefinition, val any) (any, error)
 			}
 			val = stringArray
 
-		case client.FieldKind_NILLABLE_STRING_ARRAY:
+		case client.FieldKind_NILLABLE_STRING_NILLABLE_ARRAY:
 			val, err = convertNillableArray[string](fieldDesc.Name, array)
 			if err != nil {
 				return nil, err

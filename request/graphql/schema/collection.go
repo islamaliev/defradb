@@ -430,13 +430,13 @@ func astTypeToKind(t ast.Type) (client.FieldKind, error) {
 		case *ast.NonNull:
 			switch innerAstTypeVal.Type.(*ast.Named).Name.Value {
 			case typeBoolean:
-				return client.FieldKind_BOOL_ARRAY, nil
+				return client.FieldKind_BOOL_NILLABLE_ARRAY, nil
 			case typeInt:
-				return client.FieldKind_INT_ARRAY, nil
+				return client.FieldKind_INT_NILLABLE_ARRAY, nil
 			case typeFloat:
-				return client.FieldKind_FLOAT_ARRAY, nil
+				return client.FieldKind_FLOAT_NILLABLE_ARRAY, nil
 			case typeString:
-				return client.FieldKind_STRING_ARRAY, nil
+				return client.FieldKind_STRING_NILLABLE_ARRAY, nil
 			default:
 				return client.FieldKind_None, NewErrNonNullForTypeNotSupported(innerAstTypeVal.Type.(*ast.Named).Name.Value)
 			}
@@ -444,13 +444,13 @@ func astTypeToKind(t ast.Type) (client.FieldKind, error) {
 		default:
 			switch astTypeVal.Type.(*ast.Named).Name.Value {
 			case typeBoolean:
-				return client.FieldKind_NILLABLE_BOOL_ARRAY, nil
+				return client.FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY, nil
 			case typeInt:
-				return client.FieldKind_NILLABLE_INT_ARRAY, nil
+				return client.FieldKind_NILLABLE_INT_NILLABLE_ARRAY, nil
 			case typeFloat:
-				return client.FieldKind_NILLABLE_FLOAT_ARRAY, nil
+				return client.FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY, nil
 			case typeString:
-				return client.FieldKind_NILLABLE_STRING_ARRAY, nil
+				return client.FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, nil
 			default:
 				return client.ObjectArrayKind(astTypeVal.Type.(*ast.Named).Name.Value), nil
 			}
