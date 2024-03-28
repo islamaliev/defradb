@@ -91,16 +91,30 @@ func (k ScalarKind) String() string {
 		return "Boolean"
 	case FieldKind_NILLABLE_INT:
 		return "Int"
-	case FieldKind_NILLABLE_DATETIME:
-		return "DateTime"
 	case FieldKind_NILLABLE_FLOAT:
 		return "Float"
 	case FieldKind_NILLABLE_STRING:
 		return "String"
-	case FieldKind_NILLABLE_BLOB:
-		return "Blob"
 	case FieldKind_NILLABLE_JSON:
 		return "JSON"
+	case FieldKind_NILLABLE_BLOB:
+		return "Blob"
+	case FieldKind_NILLABLE_DATETIME:
+		return "DateTime"
+	case FieldKind_BOOL:
+		return "Boolean!"
+	case FieldKind_INT:
+		return "Int!"
+	case FieldKind_FLOAT:
+		return "Float!"
+	case FieldKind_STRING:
+		return "String!"
+	case FieldKind_JSON:
+		return "JSON!"
+	case FieldKind_BLOB:
+		return "Blob!"
+	case FieldKind_DATETIME:
+		return "DateTime!"
 	default:
 		return strconv.Itoa(int(k))
 	}
@@ -111,7 +125,13 @@ func (k ScalarKind) Underlying() string {
 }
 
 func (k ScalarKind) IsNillable() bool {
-	return k != FieldKind_DocID
+	switch k {
+	case FieldKind_NILLABLE_BOOL, FieldKind_NILLABLE_INT, FieldKind_NILLABLE_FLOAT,
+		FieldKind_NILLABLE_STRING, FieldKind_NILLABLE_JSON, FieldKind_NILLABLE_BLOB,
+		FieldKind_NILLABLE_DATETIME:
+		return true
+	}
+	return false
 }
 
 func (k ScalarKind) IsObject() bool {
@@ -128,22 +148,62 @@ func (k ScalarKind) IsArray() bool {
 
 func (k ScalarArrayKind) String() string {
 	switch k {
-	case FieldKind_NILLABLE_BOOL_ARRAY:
+	case FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY:
 		return "[Boolean]"
-	case FieldKind_BOOL_ARRAY:
+	case FieldKind_BOOL_NILLABLE_ARRAY:
 		return "[Boolean!]"
-	case FieldKind_NILLABLE_INT_ARRAY:
+	case FieldKind_NILLABLE_BOOL_ARRAY:
+		return "[Boolean]!"
+	case FieldKind_BOOL_ARRAY:
+		return "[Boolean!]!"
+	case FieldKind_NILLABLE_INT_NILLABLE_ARRAY:
 		return "[Int]"
-	case FieldKind_INT_ARRAY:
+	case FieldKind_INT_NILLABLE_ARRAY:
 		return "[Int!]"
-	case FieldKind_NILLABLE_FLOAT_ARRAY:
+	case FieldKind_NILLABLE_INT_ARRAY:
+		return "[Int]!"
+	case FieldKind_INT_ARRAY:
+		return "[Int!]!"
+	case FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY:
 		return "[Float]"
-	case FieldKind_FLOAT_ARRAY:
+	case FieldKind_FLOAT_NILLABLE_ARRAY:
 		return "[Float!]"
-	case FieldKind_NILLABLE_STRING_ARRAY:
+	case FieldKind_NILLABLE_FLOAT_ARRAY:
+		return "[Float]!"
+	case FieldKind_FLOAT_ARRAY:
+		return "[Float!]!"
+	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY:
 		return "[String]"
-	case FieldKind_STRING_ARRAY:
+	case FieldKind_STRING_NILLABLE_ARRAY:
 		return "[String!]"
+	case FieldKind_NILLABLE_STRING_ARRAY:
+		return "[String]!"
+	case FieldKind_STRING_ARRAY:
+		return "[String!]!"
+	case FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+		return "[JSON]"
+	case FieldKind_JSON_NILLABLE_ARRAY:
+		return "[JSON!]"
+	case FieldKind_NILLABLE_JSON_ARRAY:
+		return "[JSON]!"
+	case FieldKind_JSON_ARRAY:
+		return "[JSON!]!"
+	case FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY:
+		return "[Blob]"
+	case FieldKind_BLOB_NILLABLE_ARRAY:
+		return "[Blob!]"
+	case FieldKind_NILLABLE_BLOB_ARRAY:
+		return "[Blob]!"
+	case FieldKind_BLOB_ARRAY:
+		return "[Blob!]!"
+	case FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY:
+		return "[DateTime]"
+	case FieldKind_DATETIME_NILLABLE_ARRAY:
+		return "[DateTime!]"
+	case FieldKind_NILLABLE_DATETIME_ARRAY:
+		return "[DateTime]!"
+	case FieldKind_DATETIME_ARRAY:
+		return "[DateTime!]!"
 	default:
 		return strconv.Itoa(int(k))
 	}
@@ -154,10 +214,16 @@ func (k ScalarArrayKind) Underlying() string {
 }
 
 func (k ScalarArrayKind) IsNillable() bool {
-	return k == FieldKind_NILLABLE_BOOL_ARRAY ||
-		k == FieldKind_NILLABLE_INT_ARRAY ||
-		k == FieldKind_NILLABLE_FLOAT_ARRAY ||
-		k == FieldKind_NILLABLE_STRING_ARRAY
+	switch k {
+	case FieldKind_BOOL_NILLABLE_ARRAY, FieldKind_INT_NILLABLE_ARRAY, FieldKind_FLOAT_NILLABLE_ARRAY,
+		FieldKind_STRING_NILLABLE_ARRAY, FieldKind_JSON_NILLABLE_ARRAY, FieldKind_BLOB_NILLABLE_ARRAY,
+		FieldKind_DATETIME_NILLABLE_ARRAY, FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY,
+		FieldKind_NILLABLE_INT_NILLABLE_ARRAY, FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY,
+		FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY,
+		FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY, FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY:
+		return true
+	}
+	return false
 }
 
 func (k ScalarArrayKind) IsObject() bool {
@@ -285,22 +351,49 @@ const (
 // in the future.  They currently roughly correspond to the GQL field types, but this
 // equality is not guaranteed.
 var FieldKindStringToEnumMapping = map[string]FieldKind{
-	"ID":         FieldKind_DocID,
-	"Boolean":    FieldKind_NILLABLE_BOOL,
-	"[Boolean]":  FieldKind_NILLABLE_BOOL_ARRAY,
-	"[Boolean!]": FieldKind_BOOL_ARRAY,
-	"Int":        FieldKind_NILLABLE_INT,
-	"[Int]":      FieldKind_NILLABLE_INT_ARRAY,
-	"[Int!]":     FieldKind_INT_ARRAY,
-	"DateTime":   FieldKind_NILLABLE_DATETIME,
-	"Float":      FieldKind_NILLABLE_FLOAT,
-	"[Float]":    FieldKind_NILLABLE_FLOAT_ARRAY,
-	"[Float!]":   FieldKind_FLOAT_ARRAY,
-	"String":     FieldKind_NILLABLE_STRING,
-	"[String]":   FieldKind_NILLABLE_STRING_ARRAY,
-	"[String!]":  FieldKind_STRING_ARRAY,
-	"Blob":       FieldKind_NILLABLE_BLOB,
-	"JSON":       FieldKind_NILLABLE_JSON,
+	"ID":           FieldKind_DocID,
+	"Boolean":      FieldKind_NILLABLE_BOOL,
+	"Boolean!":     FieldKind_BOOL,
+	"[Boolean]":    FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY,
+	"[Boolean!]":   FieldKind_BOOL_NILLABLE_ARRAY,
+	"[Boolean]!":   FieldKind_NILLABLE_BOOL_ARRAY,
+	"[Boolean!]!":  FieldKind_BOOL_ARRAY,
+	"Int":          FieldKind_NILLABLE_INT,
+	"Int!":         FieldKind_INT,
+	"[Int]":        FieldKind_NILLABLE_INT_NILLABLE_ARRAY,
+	"[Int!]":       FieldKind_INT_NILLABLE_ARRAY,
+	"[Int]!":       FieldKind_NILLABLE_INT_ARRAY,
+	"[Int!]!":      FieldKind_NILLABLE_INT_NILLABLE_ARRAY,
+	"Float":        FieldKind_NILLABLE_FLOAT,
+	"Float!":       FieldKind_FLOAT,
+	"[Float]":      FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY,
+	"[Float]!":     FieldKind_NILLABLE_FLOAT_ARRAY,
+	"[Float!]":     FieldKind_FLOAT_NILLABLE_ARRAY,
+	"[Float!]!":    FieldKind_FLOAT_ARRAY,
+	"String":       FieldKind_NILLABLE_STRING,
+	"String!":      FieldKind_STRING,
+	"[String]":     FieldKind_NILLABLE_STRING_NILLABLE_ARRAY,
+	"[String!]":    FieldKind_STRING_NILLABLE_ARRAY,
+	"[String]!":    FieldKind_NILLABLE_STRING_ARRAY,
+	"[String!]!":   FieldKind_NILLABLE_STRING_NILLABLE_ARRAY,
+	"Blob":         FieldKind_NILLABLE_BLOB,
+	"Blob!":        FieldKind_BLOB,
+	"[Blob]":       FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY,
+	"[Blob!]":      FieldKind_BLOB_NILLABLE_ARRAY,
+	"[Blob]!":      FieldKind_NILLABLE_BLOB_ARRAY,
+	"[Blob!]!":     FieldKind_BLOB_ARRAY,
+	"JSON":         FieldKind_NILLABLE_JSON,
+	"JSON!":        FieldKind_JSON,
+	"[JSON]":       FieldKind_NILLABLE_JSON_NILLABLE_ARRAY,
+	"[JSON!]":      FieldKind_JSON_NILLABLE_ARRAY,
+	"[JSON]!":      FieldKind_NILLABLE_JSON_ARRAY,
+	"[JSON!]!":     FieldKind_JSON_ARRAY,
+	"DateTime":     FieldKind_NILLABLE_DATETIME,
+	"DateTime!":    FieldKind_DATETIME,
+	"[DateTime]":   FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY,
+	"[DateTime!]":  FieldKind_DATETIME_NILLABLE_ARRAY,
+	"[DateTime]!":  FieldKind_NILLABLE_DATETIME_ARRAY,
+	"[DateTime!]!": FieldKind_DATETIME_ARRAY,
 }
 
 // IsRelation returns true if this field is a relation.

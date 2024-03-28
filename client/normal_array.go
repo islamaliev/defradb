@@ -18,19 +18,24 @@ import (
 
 type baseArrayNormalValue[T any] struct {
 	NormalVoid
-	val T
+	val  T
+	kind FieldKind
 }
 
 func (v baseArrayNormalValue[T]) Unwrap() any {
 	return v.val
 }
 
+func (v baseArrayNormalValue[T]) Kind() FieldKind {
+	return v.kind
+}
+
 func (v baseArrayNormalValue[T]) IsArray() bool {
 	return true
 }
 
-func newBaseArrayNormalValue[T any](val T) baseArrayNormalValue[T] {
-	return baseArrayNormalValue[T]{val: val}
+func newBaseArrayNormalValue[T any](val T, kind FieldKind) baseArrayNormalValue[T] {
+	return baseArrayNormalValue[T]{val: val, kind: kind}
 }
 
 type normalBoolArray struct {
@@ -91,37 +96,42 @@ func (v normalDocumentArray) DocumentArray() ([]*Document, bool) {
 
 // NewNormalBoolArray creates a new NormalValue that represents a `[]bool` value.
 func NewNormalBoolArray(val []bool) NormalValue {
-	return normalBoolArray{newBaseArrayNormalValue(val)}
+	return normalBoolArray{newBaseArrayNormalValue(val, FieldKind_BOOL_ARRAY)}
 }
 
 // NewNormalIntArray creates a new NormalValue that represents a `[]int64` value.
 func NewNormalIntArray[T constraints.Integer | constraints.Float](val []T) NormalValue {
-	return normalIntArray{newBaseArrayNormalValue(normalizeNumArr[int64](val))}
+	return normalIntArray{newBaseArrayNormalValue(normalizeNumArr[int64](val), FieldKind_INT_ARRAY)}
 }
 
 // NewNormalFloatArray creates a new NormalValue that represents a `[]float64` value.
 func NewNormalFloatArray[T constraints.Integer | constraints.Float](val []T) NormalValue {
-	return normalFloatArray{newBaseArrayNormalValue(normalizeNumArr[float64](val))}
+	return normalFloatArray{newBaseArrayNormalValue(normalizeNumArr[float64](val), FieldKind_FLOAT_ARRAY)}
 }
 
 // NewNormalStringArray creates a new NormalValue that represents a `[]string` value.
 func NewNormalStringArray[T string | []byte](val []T) NormalValue {
-	return normalStringArray{newBaseArrayNormalValue(normalizeCharsArr[string](val))}
+	return normalStringArray{newBaseArrayNormalValue(normalizeCharsArr[string](val), FieldKind_STRING_ARRAY)}
+}
+
+// NewNormalJSONArray creates a new NormalValue that represents JSON array as a `[]string` value.
+func NewNormalJSONArray[T string | []byte](val []T) NormalValue {
+	return normalStringArray{newBaseArrayNormalValue(normalizeCharsArr[string](val), FieldKind_JSON_ARRAY)}
 }
 
 // NewNormalBytesArray creates a new NormalValue that represents a `[][]byte` value.
 func NewNormalBytesArray[T string | []byte](val []T) NormalValue {
-	return normalBytesArray{newBaseArrayNormalValue(normalizeCharsArr[[]byte](val))}
+	return normalBytesArray{newBaseArrayNormalValue(normalizeCharsArr[[]byte](val), FieldKind_BLOB_ARRAY)}
 }
 
 // NewNormalTimeArray creates a new NormalValue that represents a `[]time.Time` value.
 func NewNormalTimeArray(val []time.Time) NormalValue {
-	return normalTimeArray{newBaseArrayNormalValue(val)}
+	return normalTimeArray{newBaseArrayNormalValue(val, FieldKind_DATETIME_ARRAY)}
 }
 
 // NewNormalDocumentArray creates a new NormalValue that represents a `[]*Document` value.
-func NewNormalDocumentArray(val []*Document) NormalValue {
-	return normalDocumentArray{newBaseArrayNormalValue(val)}
+func NewNormalDocumentArray(val []*Document, kind ObjectArrayKind) NormalValue {
+	return normalDocumentArray{newBaseArrayNormalValue(val, kind)}
 }
 
 func normalizeNumArr[R int64 | float64, T constraints.Integer | constraints.Float](val []T) []R {

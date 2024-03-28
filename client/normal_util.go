@@ -10,6 +10,8 @@
 
 package client
 
+import "github.com/sourcenetwork/immutable"
+
 // ToArrayOfNormalValues converts a NormalValue into a slice of NormalValue if the given value
 // is an array. If the given value is not an array, an error is returned.
 func ToArrayOfNormalValues(val NormalValue) ([]NormalValue, error) {
@@ -27,6 +29,9 @@ func ToArrayOfNormalValues(val NormalValue) ([]NormalValue, error) {
 			return toNormalArray(v, NewNormalFloat), nil
 		}
 		if v, ok := val.StringArray(); ok {
+			if val.Kind() == FieldKind_JSON_ARRAY {
+				return toNormalArray(v, NewNormalJSON), nil
+			}
 			return toNormalArray(v, NewNormalString), nil
 		}
 		if v, ok := val.BytesArray(); ok {
@@ -36,7 +41,9 @@ func ToArrayOfNormalValues(val NormalValue) ([]NormalValue, error) {
 			return toNormalArray(v, NewNormalTime), nil
 		}
 		if v, ok := val.DocumentArray(); ok {
-			return toNormalArray(v, NewNormalDocument), nil
+			return toNormalArray(v, func(d *Document) NormalValue {
+				return NewNormalDocument(d, ObjectKind(val.Kind().Underlying()))
+			}), nil
 		}
 		if v, ok := val.NillableBoolArray(); ok {
 			return toNormalArray(v, NewNormalNillableBool), nil
@@ -48,6 +55,9 @@ func ToArrayOfNormalValues(val NormalValue) ([]NormalValue, error) {
 			return toNormalArray(v, NewNormalNillableFloat), nil
 		}
 		if v, ok := val.NillableStringArray(); ok {
+			if val.Kind() == FieldKind_NILLABLE_JSON_ARRAY {
+				return toNormalArray(v, NewNormalNillableJSON), nil
+			}
 			return toNormalArray(v, NewNormalNillableString), nil
 		}
 		if v, ok := val.NillableBytesArray(); ok {
@@ -57,7 +67,9 @@ func ToArrayOfNormalValues(val NormalValue) ([]NormalValue, error) {
 			return toNormalArray(v, NewNormalNillableTime), nil
 		}
 		if v, ok := val.NillableDocumentArray(); ok {
-			return toNormalArray(v, NewNormalNillableDocument), nil
+			return toNormalArray(v, func(d immutable.Option[*Document]) NormalValue {
+				return NewNormalNillableDocument(d, ObjectKind(val.Kind().Underlying()))
+			}), nil
 		}
 	} else {
 		if val.IsNil() {
@@ -73,6 +85,9 @@ func ToArrayOfNormalValues(val NormalValue) ([]NormalValue, error) {
 			return toNormalArray(v.Value(), NewNormalNillableFloat), nil
 		}
 		if v, ok := val.NillableStringNillableArray(); ok {
+			if val.Kind() == FieldKind_NILLABLE_JSON_NILLABLE_ARRAY {
+				return toNormalArray(v.Value(), NewNormalNillableJSON), nil
+			}
 			return toNormalArray(v.Value(), NewNormalNillableString), nil
 		}
 		if v, ok := val.NillableBytesNillableArray(); ok {
@@ -82,7 +97,9 @@ func ToArrayOfNormalValues(val NormalValue) ([]NormalValue, error) {
 			return toNormalArray(v.Value(), NewNormalNillableTime), nil
 		}
 		if v, ok := val.NillableDocumentNillableArray(); ok {
-			return toNormalArray(v.Value(), NewNormalNillableDocument), nil
+			return toNormalArray(v.Value(), func(d immutable.Option[*Document]) NormalValue {
+				return NewNormalNillableDocument(d, ObjectKind(val.Kind().Underlying()))
+			}), nil
 		}
 		if v, ok := val.BoolNillableArray(); ok {
 			return toNormalArray(v.Value(), NewNormalBool), nil
@@ -94,6 +111,9 @@ func ToArrayOfNormalValues(val NormalValue) ([]NormalValue, error) {
 			return toNormalArray(v.Value(), NewNormalFloat), nil
 		}
 		if v, ok := val.StringNillableArray(); ok {
+			if val.Kind() == FieldKind_JSON_NILLABLE_ARRAY {
+				return toNormalArray(v.Value(), NewNormalJSON), nil
+			}
 			return toNormalArray(v.Value(), NewNormalString), nil
 		}
 		if v, ok := val.BytesNillableArray(); ok {
@@ -103,7 +123,9 @@ func ToArrayOfNormalValues(val NormalValue) ([]NormalValue, error) {
 			return toNormalArray(v.Value(), NewNormalTime), nil
 		}
 		if v, ok := val.DocumentNillableArray(); ok {
-			return toNormalArray(v.Value(), NewNormalDocument), nil
+			return toNormalArray(v.Value(), func(d *Document) NormalValue {
+				return NewNormalDocument(d, ObjectKind(val.Kind().Underlying()))
+			}), nil
 		}
 	}
 	return nil, NewCanNotTurnNormalValueIntoArray(val)

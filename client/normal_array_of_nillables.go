@@ -76,39 +76,55 @@ func (v normalNillableDocumentArray) NillableDocumentArray() ([]immutable.Option
 // NewNormalNillableBoolNillableArray creates a new NormalValue that represents a
 // `immutable.Option[[]immutable.Option[bool]]` value.
 func NewNormalNillableBoolArray(val []immutable.Option[bool]) NormalValue {
-	return normalNillableBoolArray{newBaseArrayNormalValue(val)}
+	return normalNillableBoolArray{newBaseArrayNormalValue(val, FieldKind_NILLABLE_BOOL_ARRAY)}
 }
 
 // NewNormalNillableIntArray creates a new NormalValue that represents a `[]immutable.Option[int64]` value.
 func NewNormalNillableIntArray[T constraints.Integer | constraints.Float](val []immutable.Option[T]) NormalValue {
-	return normalNillableIntArray{newBaseArrayNormalValue(normalizeNillableNumArr[int64](val))}
+	return normalNillableIntArray{
+		newBaseArrayNormalValue(normalizeNillableNumArr[int64](val), FieldKind_NILLABLE_INT_ARRAY),
+	}
 }
 
 // NewNormalNillableFloatArray creates a new NormalValue that represents a `[]immutable.Option[float64]` value.
 func NewNormalNillableFloatArray[T constraints.Integer | constraints.Float](
 	val []immutable.Option[T],
 ) NormalValue {
-	return normalNillableFloatArray{newBaseArrayNormalValue(normalizeNillableNumArr[float64](val))}
+	return normalNillableFloatArray{
+		newBaseArrayNormalValue(normalizeNillableNumArr[float64](val), FieldKind_NILLABLE_FLOAT_ARRAY),
+	}
 }
 
 // NewNormalNillableStringArray creates a new NormalValue that represents a `[]immutable.Option[string]` value.
 func NewNormalNillableStringArray[T string | []byte](val []immutable.Option[T]) NormalValue {
-	return normalNillableStringArray{newBaseArrayNormalValue(normalizeNillableCharsArr[string](val))}
+	return normalNillableStringArray{
+		newBaseArrayNormalValue(normalizeNillableCharsArr[string](val), FieldKind_NILLABLE_STRING_ARRAY),
+	}
+}
+
+// NewNormalNillableJSONArray creates a new NormalValue that represents JSON array as a `[]immutable.Option[string]`
+// value.
+func NewNormalNillableJSONArray[T string | []byte](val []immutable.Option[T]) NormalValue {
+	return normalNillableStringArray{
+		newBaseArrayNormalValue(normalizeNillableCharsArr[string](val), FieldKind_NILLABLE_JSON_ARRAY),
+	}
 }
 
 // NewNormalNillableBytesArray creates a new NormalValue that represents a `[]immutable.Option[[]byte]` value.
 func NewNormalNillableBytesArray[T string | []byte](val []immutable.Option[T]) NormalValue {
-	return normalNillableBytesArray{newBaseArrayNormalValue(normalizeNillableCharsArr[[]byte](val))}
+	return normalNillableBytesArray{
+		newBaseArrayNormalValue(normalizeNillableCharsArr[[]byte](val), FieldKind_NILLABLE_BLOB_ARRAY),
+	}
 }
 
 // NewNormalNillableTimeArray creates a new NormalValue that represents a `[]immutable.Option[time.Time]` value.
 func NewNormalNillableTimeArray(val []immutable.Option[time.Time]) NormalValue {
-	return normalNillableTimeArray{newBaseArrayNormalValue(val)}
+	return normalNillableTimeArray{newBaseArrayNormalValue(val, FieldKind_NILLABLE_DATETIME_ARRAY)}
 }
 
 // NewNormalNillableDocumentArray creates a new NormalValue that represents a `[]immutable.Option[*Document]` value.
-func NewNormalNillableDocumentArray(val []immutable.Option[*Document]) NormalValue {
-	return normalNillableDocumentArray{newBaseArrayNormalValue(val)}
+func NewNormalNillableDocumentArray(val []immutable.Option[*Document], kind ObjectArrayKind) NormalValue {
+	return normalNillableDocumentArray{newBaseArrayNormalValue(val, kind)}
 }
 
 func normalizeNillableNumArr[R int64 | float64, T constraints.Integer | constraints.Float](

@@ -37,6 +37,8 @@ type NormalValue interface {
 	IsNillable() bool
 	// IsArray returns if the value is an array.
 	IsArray() bool
+	// Kind returns the kind of the normal value.
+	Kind() FieldKind
 
 	// Bool returns the value as a bool. The second return flag is true if the value is a bool.
 	// Otherwise it will return false and false.

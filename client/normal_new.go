@@ -30,6 +30,9 @@ import (
 // This function will not check if the given value is `nil`. To normalize a `nil` value use the
 // `NewNormalNil` function.
 func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
+	if val == nil {
+		return NewNormalNil(kind)
+	}
 	switch v := val.(type) {
 	case bool:
 		return newNormalBoolOfKind(v, kind)
@@ -70,70 +73,41 @@ func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
 		if kind == FieldKind_NILLABLE_BOOL {
 			return NewNormalNillableBool(v), nil
 		}
-		return NewNormalNillableBool(v), nil
 	case immutable.Option[int8]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[int16]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[int32]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[int64]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[int]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[uint8]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[uint16]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[uint32]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[uint64]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[uint]:
-		if kind == FieldKind_NILLABLE_INT {
-			return NewNormalNillableInt(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[float32]:
-		if kind == FieldKind_NILLABLE_FLOAT {
-			return NewNormalNillableFloat(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[float64]:
-		if kind == FieldKind_NILLABLE_FLOAT {
-			return NewNormalNillableFloat(v), nil
-		}
+		return newNormalNillableNumberOfKind(v, kind)
 	case immutable.Option[string]:
-		if kind == FieldKind_NILLABLE_STRING {
-			return NewNormalNillableString(v), nil
-		}
+		return newNormalNillableCharsOfKind(v, kind)
 	case immutable.Option[[]byte]:
-		if kind == FieldKind_NILLABLE_BLOB {
-			return NewNormalNillableBytes(v), nil
-		}
+		return newNormalNillableCharsOfKind(v, kind)
 	case immutable.Option[time.Time]:
 		if kind == FieldKind_NILLABLE_DATETIME {
 			return NewNormalNillableTime(v), nil
 		}
 	case immutable.Option[*Document]:
-		if kind.IsObject() && kind.IsNillable() {
-			return NewNormalNillableDocument(v), nil
+		if kind.IsObject() && kind.IsNillable() && !kind.IsObjectArray() {
+			return NewNormalNillableDocument(v, kind.(ObjectKind)), nil
 		}
 
 	case []bool:
@@ -213,10 +187,11 @@ func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
 		}
 	case []immutable.Option[*Document]:
 		if kind.IsObjectArray() {
+			k := kind.(ObjectArrayKind)
 			if kind.IsNillable() {
-				return NewNormalNillableDocumentNillableArray(immutable.Some(v)), nil
+				return NewNormalNillableDocumentNillableArray(immutable.Some(v), k), nil
 			}
-			return NewNormalNillableDocumentArray(v), nil
+			return NewNormalNillableDocumentArray(v, k), nil
 		}
 
 	case immutable.Option[[]bool]:
@@ -261,7 +236,7 @@ func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
 		}
 	case immutable.Option[[]*Document]:
 		if kind.IsObjectArray() && kind.IsNillable() {
-			return NewNormalDocumentNillableArray(v), nil
+			return NewNormalDocumentNillableArray(v, kind.(ObjectArrayKind)), nil
 			// TODO: there is no way to check if the given value should an array of normal documents
 			// or an array of nillable documents. There is no FieldKind_NILLABLE_OBJECT_ARRAY.
 		}
@@ -304,7 +279,7 @@ func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
 		}
 	case immutable.Option[[]immutable.Option[*Document]]:
 		if kind.IsObjectArray() && kind.IsNillable() {
-			return NewNormalNillableDocumentNillableArray(v), nil
+			return NewNormalNillableDocumentNillableArray(v, kind.(ObjectArrayKind)), nil
 		}
 
 	case []any:
@@ -322,8 +297,10 @@ func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
 			return convertAnyArrToNumArrNormalValue[int64](v, NewNormalIntArray)
 		case FieldKind_FLOAT_ARRAY:
 			return convertAnyArrToNumArrNormalValue[float64](v, NewNormalFloatArray)
-		case FieldKind_STRING_ARRAY, FieldKind_JSON_ARRAY:
+		case FieldKind_STRING_ARRAY:
 			return convertAnyArrToTypedArrNormalValue[string](v, NewNormalStringArray)
+		case FieldKind_JSON_ARRAY:
+			return convertAnyArrToTypedArrNormalValue[string](v, NewNormalJSONArray)
 		case FieldKind_BLOB_ARRAY:
 			return convertAnyArrToTypedArrNormalValue[[]byte](v, NewNormalBytesArray)
 		case FieldKind_DATETIME_ARRAY:
@@ -335,8 +312,10 @@ func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
 			return convertAnyArrToNillableNumArrNormalValue[int64](v, NewNormalNillableIntArray)
 		case FieldKind_NILLABLE_FLOAT_ARRAY:
 			return convertAnyArrToNillableNumArrNormalValue[float64](v, NewNormalNillableFloatArray)
-		case FieldKind_NILLABLE_STRING_ARRAY, FieldKind_NILLABLE_JSON_ARRAY:
+		case FieldKind_NILLABLE_STRING_ARRAY:
 			return convertAnyArrToNillableTypedArrNormalValue[string](v, NewNormalNillableStringArray)
+		case FieldKind_NILLABLE_JSON_ARRAY:
+			return convertAnyArrToNillableTypedArrNormalValue[string](v, NewNormalNillableJSONArray)
 		case FieldKind_NILLABLE_BLOB_ARRAY:
 			return convertAnyArrToNillableTypedArrNormalValue[[]byte](v, NewNormalNillableBytesArray)
 		case FieldKind_NILLABLE_DATETIME_ARRAY:
@@ -348,8 +327,10 @@ func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
 			return convertAnyArrToNumArrNillableNormalValue[int64](v, NewNormalIntNillableArray)
 		case FieldKind_FLOAT_NILLABLE_ARRAY:
 			return convertAnyArrToNumArrNillableNormalValue[float64](v, NewNormalFloatNillableArray)
-		case FieldKind_STRING_NILLABLE_ARRAY, FieldKind_JSON_NILLABLE_ARRAY:
+		case FieldKind_STRING_NILLABLE_ARRAY:
 			return convertAnyArrToTypedNillableArrNormalValue[string](v, NewNormalStringNillableArray)
+		case FieldKind_JSON_NILLABLE_ARRAY:
+			return convertAnyArrToTypedNillableArrNormalValue[string](v, NewNormalJSONNillableArray)
 		case FieldKind_BLOB_NILLABLE_ARRAY:
 			return convertAnyArrToTypedNillableArrNormalValue[[]byte](v, NewNormalBytesNillableArray)
 		case FieldKind_DATETIME_NILLABLE_ARRAY:
@@ -361,8 +342,10 @@ func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
 			return convertAnyArrToNillableNumNillableArrNormalValue[int64](v, NewNormalNillableIntNillableArray)
 		case FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY:
 			return convertAnyArrToNillableNumNillableArrNormalValue[float64](v, NewNormalNillableIntNillableArray)
-		case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+		case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY:
 			return convertAnyArrToNillableTypedNillableArrNormalValue[string](v, NewNormalNillableStringNillableArray)
+		case FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+			return convertAnyArrToNillableTypedNillableArrNormalValue[string](v, NewNormalNillableJSONNillableArray)
 		case FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY:
 			return convertAnyArrToNillableTypedNillableArrNormalValue[[]byte](v, NewNormalNillableBytesNillableArray)
 		case FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY:
@@ -371,9 +354,13 @@ func NewNormalValue(val any, kind FieldKind) (NormalValue, error) {
 
 		if kind.IsObjectArray() {
 			if kind.IsNillable() {
-				return convertAnyArrToTypedNillableArrNormalValue(v, NewNormalDocumentNillableArray)
+				return convertAnyArrToTypedNillableArrNormalValue(v, func(d immutable.Option[[]*Document]) NormalValue {
+					return NewNormalDocumentNillableArray(d, ObjectArrayKind(kind.Underlying()))
+				})
 			}
-			return convertAnyArrToTypedArrNormalValue(v, NewNormalDocumentArray)
+			return convertAnyArrToTypedArrNormalValue(v, func(d []*Document) NormalValue {
+				return NewNormalDocumentArray(d, ObjectArrayKind(kind.Underlying()))
+			})
 		}
 	}
 	return nil, NewCanNotNormalizeValueOfKind(val, kind)
@@ -406,13 +393,26 @@ func newNormalBoolArrayOfKind(val []bool, kind FieldKind) (NormalValue, error) {
 func newNormalNumberOfKind[T constraints.Integer | constraints.Float](val T, kind FieldKind) (NormalValue, error) {
 	switch kind {
 	case FieldKind_INT:
-		return newNormalInt(int64(val)), nil
+		return NewNormalInt(val), nil
 	case FieldKind_FLOAT:
-		return newNormalFloat(float64(val)), nil
+		return NewNormalFloat(val), nil
 	case FieldKind_NILLABLE_INT:
 		return NewNormalNillableInt(immutable.Some(int64(val))), nil
 	case FieldKind_NILLABLE_FLOAT:
 		return NewNormalNillableFloat(immutable.Some(float64(val))), nil
+	}
+	return nil, NewCanNotNormalizeValueOfKind(val, kind)
+}
+
+func newNormalNillableNumberOfKind[T constraints.Integer | constraints.Float](
+	val immutable.Option[T],
+	kind FieldKind,
+) (NormalValue, error) {
+	switch kind {
+	case FieldKind_NILLABLE_INT:
+		return NewNormalNillableInt(val), nil
+	case FieldKind_NILLABLE_FLOAT:
+		return NewNormalNillableFloat(val), nil
 	}
 	return nil, NewCanNotNormalizeValueOfKind(val, kind)
 }
@@ -489,14 +489,30 @@ func newNormalCharsOfKind[T string | []byte](
 	val T, kind FieldKind,
 ) (NormalValue, error) {
 	switch kind {
-	case FieldKind_STRING, FieldKind_JSON:
+	case FieldKind_STRING:
 		return NewNormalString(string(val)), nil
+	case FieldKind_JSON:
+		return NewNormalJSON(string(val)), nil
 	case FieldKind_BLOB:
 		return NewNormalBytes([]byte(val)), nil
-	case FieldKind_NILLABLE_STRING, FieldKind_NILLABLE_JSON:
+	case FieldKind_NILLABLE_STRING:
 		return NewNormalNillableString(immutable.Some(string(val))), nil
+	case FieldKind_NILLABLE_JSON:
+		return NewNormalNillableJSON(immutable.Some(string(val))), nil
 	case FieldKind_NILLABLE_BLOB:
 		return NewNormalNillableBytes(immutable.Some([]byte(val))), nil
+	}
+	return nil, NewCanNotNormalizeValueOfKind(val, kind)
+}
+
+func newNormalNillableCharsOfKind[T string | []byte](val immutable.Option[T], kind FieldKind) (NormalValue, error) {
+	switch kind {
+	case FieldKind_NILLABLE_STRING:
+		return NewNormalNillableString(val), nil
+	case FieldKind_NILLABLE_JSON:
+		return NewNormalNillableJSON(val), nil
+	case FieldKind_NILLABLE_BLOB:
+		return NewNormalNillableBytes(val), nil
 	}
 	return nil, NewCanNotNormalizeValueOfKind(val, kind)
 }
@@ -505,20 +521,28 @@ func newNormalCharsArrayOfKind[T string | []byte](
 	val []T, kind FieldKind,
 ) (NormalValue, error) {
 	switch kind {
-	case FieldKind_STRING_ARRAY, FieldKind_JSON_ARRAY:
+	case FieldKind_STRING_ARRAY:
 		return NewNormalStringArray(val), nil
+	case FieldKind_JSON_ARRAY:
+		return NewNormalJSONArray(val), nil
 	case FieldKind_BLOB_ARRAY:
 		return NewNormalBytesArray(val), nil
-	case FieldKind_STRING_NILLABLE_ARRAY, FieldKind_JSON_NILLABLE_ARRAY:
+	case FieldKind_STRING_NILLABLE_ARRAY:
 		return NewNormalStringNillableArray(immutable.Some(val)), nil
+	case FieldKind_JSON_NILLABLE_ARRAY:
+		return NewNormalJSONNillableArray(immutable.Some(val)), nil
 	case FieldKind_BLOB_NILLABLE_ARRAY:
 		return NewNormalBytesNillableArray(immutable.Some(val)), nil
-	case FieldKind_NILLABLE_STRING_ARRAY, FieldKind_NILLABLE_JSON_ARRAY:
+	case FieldKind_NILLABLE_STRING_ARRAY:
 		return NewNormalNillableStringArray(toArrayOfNillables(val)), nil
+	case FieldKind_NILLABLE_JSON_ARRAY:
+		return NewNormalNillableJSONArray(toArrayOfNillables(val)), nil
 	case FieldKind_NILLABLE_BLOB_ARRAY:
 		return NewNormalNillableBytesArray(toArrayOfNillables(val)), nil
-	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY:
 		return NewNormalNillableStringNillableArray(immutable.Some(toArrayOfNillables(val))), nil
+	case FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+		return NewNormalNillableJSONNillableArray(immutable.Some(toArrayOfNillables(val))), nil
 	case FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY:
 		return NewNormalNillableBytesNillableArray(immutable.Some(toArrayOfNillables(val))), nil
 	}
@@ -529,12 +553,16 @@ func newNormalNillableCharsArrayOfKind[T string | []byte](
 	val []immutable.Option[T], kind FieldKind,
 ) (NormalValue, error) {
 	switch kind {
-	case FieldKind_NILLABLE_STRING_ARRAY, FieldKind_NILLABLE_JSON_ARRAY:
+	case FieldKind_NILLABLE_STRING_ARRAY:
 		return NewNormalNillableStringArray(val), nil
+	case FieldKind_NILLABLE_JSON_ARRAY:
+		return NewNormalNillableJSONArray(val), nil
 	case FieldKind_NILLABLE_BLOB_ARRAY:
 		return NewNormalNillableBytesArray(val), nil
-	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY:
 		return NewNormalNillableStringNillableArray(immutable.Some(val)), nil
+	case FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+		return NewNormalNillableJSONNillableArray(immutable.Some(val)), nil
 	case FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY:
 		return NewNormalNillableBytesNillableArray(immutable.Some(val)), nil
 	}
@@ -545,12 +573,16 @@ func newNormalCharsNillableArrayOfKind[T string | []byte](
 	val immutable.Option[[]T], kind FieldKind,
 ) (NormalValue, error) {
 	switch kind {
-	case FieldKind_STRING_NILLABLE_ARRAY, FieldKind_JSON_NILLABLE_ARRAY:
+	case FieldKind_STRING_NILLABLE_ARRAY:
 		return NewNormalStringNillableArray(val), nil
+	case FieldKind_JSON_NILLABLE_ARRAY:
+		return NewNormalJSONNillableArray(val), nil
 	case FieldKind_BLOB_NILLABLE_ARRAY:
 		return NewNormalBytesNillableArray(val), nil
-	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY:
 		return NewNormalNillableStringNillableArray(immutable.Some(toArrayOfNillables(val.Value()))), nil
+	case FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+		return NewNormalNillableJSONNillableArray(immutable.Some(toArrayOfNillables(val.Value()))), nil
 	case FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY:
 		return NewNormalNillableBytesNillableArray(immutable.Some(toArrayOfNillables(val.Value()))), nil
 	}
@@ -561,8 +593,10 @@ func newNormalNillableCharsNillableArrayOfKind[T string | []byte](
 	val immutable.Option[[]immutable.Option[T]], kind FieldKind,
 ) (NormalValue, error) {
 	switch kind {
-	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+	case FieldKind_NILLABLE_STRING_NILLABLE_ARRAY:
 		return NewNormalNillableStringNillableArray(val), nil
+	case FieldKind_NILLABLE_JSON_NILLABLE_ARRAY:
+		return NewNormalNillableJSONNillableArray(val), nil
 	case FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY:
 		return NewNormalNillableBytesNillableArray(val), nil
 	}
@@ -580,13 +614,13 @@ func newNormalTimeOfKind(val time.Time, kind FieldKind) (NormalValue, error) {
 }
 
 func newNormalDocumentOfKind(val *Document, kind FieldKind) (NormalValue, error) {
-	if !kind.IsObject() {
+	if !kind.IsObject() || kind.IsObjectArray() {
 		return nil, NewCanNotNormalizeValueOfKind(val, kind)
 	}
 	if kind.IsNillable() {
-		return NewNormalNillableDocument(immutable.Some(val)), nil
+		return NewNormalNillableDocument(immutable.Some(val), kind.(ObjectKind)), nil
 	}
-	return NewNormalDocument(val), nil
+	return NewNormalDocument(val, kind.(ObjectKind)), nil
 }
 
 func newNormalTimeArrayOfKind(val []time.Time, kind FieldKind) (NormalValue, error) {
@@ -605,10 +639,11 @@ func newNormalTimeArrayOfKind(val []time.Time, kind FieldKind) (NormalValue, err
 
 func newNormalDocumentArrayOfKind(val []*Document, kind FieldKind) (NormalValue, error) {
 	if kind.IsObjectArray() {
+		k := kind.(ObjectArrayKind)
 		if kind.IsNillable() {
-			return NewNormalDocumentNillableArray(immutable.Some(val)), nil
+			return NewNormalDocumentNillableArray(immutable.Some(val), k), nil
 		}
-		return NewNormalDocumentArray(val), nil
+		return NewNormalDocumentArray(val, k), nil
 	}
 	return nil, NewCanNotNormalizeValueOfKind(val, kind)
 }

@@ -91,7 +91,11 @@ func NewCanNotNormalizeValue(val any) error {
 // NewCanNotNormalizeValueOfKind returns an error indicating that the given value can not be normalized
 // to the given kind.
 func NewCanNotNormalizeValueOfKind(val any, kind FieldKind) error {
-	return errors.New(errCanNotNormalizeValueOfKind, errors.NewKV("Value", val), errors.NewKV("Kind", kind))
+	return errors.New(
+		errCanNotNormalizeValueOfKind,
+		errors.NewKV("Value", fmt.Sprintf("%v", val)),
+		errors.NewKV("Kind", kind.String()),
+	)
 }
 
 // NewCanNotTurnNormalValueIntoArray returns an error indicating that the given value can not be

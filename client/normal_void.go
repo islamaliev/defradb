@@ -24,6 +24,10 @@ func (NormalVoid) Unwrap() any {
 	return nil
 }
 
+func (NormalVoid) Kind() FieldKind {
+	return FieldKind_None
+}
+
 func (NormalVoid) IsNil() bool {
 	return false
 }

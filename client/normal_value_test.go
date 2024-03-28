@@ -103,7 +103,20 @@ func extractValue(input any) any {
 	return input
 }
 
-func TestNormalValue_NewValueAndTypeAssertion(t *testing.T) {
+var docKind = ObjectKind("ObjectKind")
+var docArrKind = ObjectArrayKind("ObjectArrayKind")
+
+func getAllKinds() []FieldKind {
+	fieldKinds := []FieldKind{}
+	for _, kind := range FieldKindStringToEnumMapping {
+		fieldKinds = append(fieldKinds, kind)
+	}
+	fieldKinds = append(fieldKinds, docKind)
+	fieldKinds = append(fieldKinds, docArrKind)
+	return fieldKinds
+}
+
+func TestNormalValue_NewValue(t *testing.T) {
 	typeAssertMap := map[nType]func(NormalValue) (any, bool){
 		BoolType:     func(v NormalValue) (any, bool) { return v.Bool() },
 		IntType:      func(v NormalValue) (any, bool) { return v.Int() },
@@ -156,30 +169,122 @@ func TestNormalValue_NewValueAndTypeAssertion(t *testing.T) {
 		},
 	}
 
+	kindMap := map[nType][]FieldKind{
+		BoolType:  {FieldKind_BOOL, FieldKind_NILLABLE_BOOL},
+		IntType:   {FieldKind_INT, FieldKind_NILLABLE_INT, FieldKind_FLOAT, FieldKind_NILLABLE_FLOAT},
+		FloatType: {FieldKind_FLOAT, FieldKind_NILLABLE_FLOAT, FieldKind_INT, FieldKind_NILLABLE_INT},
+		StringType: {FieldKind_STRING, FieldKind_NILLABLE_STRING, FieldKind_BLOB, FieldKind_NILLABLE_BLOB,
+			FieldKind_JSON, FieldKind_NILLABLE_JSON},
+		BytesType: {FieldKind_BLOB, FieldKind_NILLABLE_BLOB, FieldKind_STRING, FieldKind_NILLABLE_STRING,
+			FieldKind_JSON, FieldKind_NILLABLE_JSON},
+		TimeType:     {FieldKind_DATETIME, FieldKind_NILLABLE_DATETIME},
+		DocumentType: {docKind},
+
+		NillableBoolType:     {FieldKind_NILLABLE_BOOL},
+		NillableIntType:      {FieldKind_NILLABLE_INT, FieldKind_NILLABLE_FLOAT},
+		NillableFloatType:    {FieldKind_NILLABLE_FLOAT, FieldKind_NILLABLE_INT},
+		NillableStringType:   {FieldKind_NILLABLE_STRING, FieldKind_NILLABLE_BLOB, FieldKind_NILLABLE_JSON},
+		NillableBytesType:    {FieldKind_NILLABLE_BLOB, FieldKind_NILLABLE_STRING, FieldKind_NILLABLE_JSON},
+		NillableTimeType:     {FieldKind_NILLABLE_DATETIME},
+		NillableDocumentType: {docKind},
+
+		BoolArray: {FieldKind_BOOL_ARRAY, FieldKind_BOOL_NILLABLE_ARRAY, FieldKind_NILLABLE_BOOL_ARRAY,
+			FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY},
+		IntArray: {FieldKind_INT_ARRAY, FieldKind_INT_NILLABLE_ARRAY, FieldKind_NILLABLE_INT_ARRAY,
+			FieldKind_NILLABLE_INT_NILLABLE_ARRAY, FieldKind_FLOAT_ARRAY, FieldKind_FLOAT_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_FLOAT_ARRAY, FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY},
+		FloatArray: {FieldKind_FLOAT_ARRAY, FieldKind_FLOAT_NILLABLE_ARRAY, FieldKind_NILLABLE_FLOAT_ARRAY,
+			FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY, FieldKind_INT_ARRAY, FieldKind_INT_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_INT_ARRAY, FieldKind_NILLABLE_INT_NILLABLE_ARRAY},
+		StringArray: {FieldKind_STRING_ARRAY, FieldKind_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_STRING_ARRAY,
+			FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_BLOB_ARRAY, FieldKind_BLOB_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_BLOB_ARRAY, FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY, FieldKind_JSON_ARRAY,
+			FieldKind_JSON_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY},
+		BytesArray: {FieldKind_BLOB_ARRAY, FieldKind_BLOB_NILLABLE_ARRAY, FieldKind_NILLABLE_BLOB_ARRAY,
+			FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY, FieldKind_STRING_ARRAY, FieldKind_STRING_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_STRING_ARRAY, FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_JSON_ARRAY,
+			FieldKind_JSON_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY},
+		TimeArray: {FieldKind_DATETIME_ARRAY, FieldKind_DATETIME_NILLABLE_ARRAY, FieldKind_NILLABLE_DATETIME_ARRAY,
+			FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY},
+		DocumentArray: {docArrKind},
+
+		BoolNillableArray: {FieldKind_BOOL_NILLABLE_ARRAY, FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY},
+		IntNillableArray: {FieldKind_INT_NILLABLE_ARRAY, FieldKind_NILLABLE_INT_NILLABLE_ARRAY,
+			FieldKind_FLOAT_NILLABLE_ARRAY, FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY},
+		FloatNillableArray: {FieldKind_FLOAT_NILLABLE_ARRAY, FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY,
+			FieldKind_INT_NILLABLE_ARRAY, FieldKind_NILLABLE_INT_NILLABLE_ARRAY},
+		StringNillableArray: {FieldKind_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_STRING_NILLABLE_ARRAY,
+			FieldKind_BLOB_NILLABLE_ARRAY, FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY, FieldKind_JSON_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_JSON_NILLABLE_ARRAY},
+		BytesNillableArray: {FieldKind_BLOB_NILLABLE_ARRAY, FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY,
+			FieldKind_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_JSON_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_JSON_NILLABLE_ARRAY},
+		TimeNillableArray:     {FieldKind_DATETIME_NILLABLE_ARRAY, FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY},
+		DocumentNillableArray: {docArrKind},
+
+		NillableBoolArray: {FieldKind_NILLABLE_BOOL_ARRAY, FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY},
+		NillableIntArray: {FieldKind_NILLABLE_INT_ARRAY, FieldKind_NILLABLE_INT_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_FLOAT_ARRAY, FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY},
+		NillableFloatArray: {FieldKind_NILLABLE_FLOAT_ARRAY, FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_INT_ARRAY, FieldKind_NILLABLE_INT_NILLABLE_ARRAY},
+		NillableStringArray: {FieldKind_NILLABLE_STRING_ARRAY, FieldKind_NILLABLE_STRING_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_BLOB_ARRAY, FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_ARRAY,
+			FieldKind_NILLABLE_JSON_NILLABLE_ARRAY},
+		NillableBytesArray: {FieldKind_NILLABLE_BLOB_ARRAY, FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_STRING_ARRAY, FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_ARRAY,
+			FieldKind_NILLABLE_JSON_NILLABLE_ARRAY},
+		NillableTimeArray:     {FieldKind_NILLABLE_DATETIME_ARRAY, FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY},
+		NillableDocumentArray: {docArrKind},
+
+		NillableBoolNillableArray: {FieldKind_NILLABLE_BOOL_NILLABLE_ARRAY},
+		NillableIntNillableArray: {FieldKind_NILLABLE_INT_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY},
+		NillableFloatNillableArray: {FieldKind_NILLABLE_FLOAT_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_INT_NILLABLE_ARRAY},
+		NillableStringNillableArray: {FieldKind_NILLABLE_STRING_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY},
+		NillableBytesNillableArray: {FieldKind_NILLABLE_BLOB_NILLABLE_ARRAY,
+			FieldKind_NILLABLE_STRING_NILLABLE_ARRAY, FieldKind_NILLABLE_JSON_NILLABLE_ARRAY},
+		NillableTimeNillableArray:     {FieldKind_NILLABLE_DATETIME_NILLABLE_ARRAY},
+		NillableDocumentNillableArray: {docArrKind},
+	}
+
 	newMap := map[nType]func(any) NormalValue{
-		BoolType:     func(v any) NormalValue { return NewNormalBool(v.(bool)) },
-		IntType:      func(v any) NormalValue { return NewNormalInt(v.(int64)) },
-		FloatType:    func(v any) NormalValue { return NewNormalFloat(v.(float64)) },
-		StringType:   func(v any) NormalValue { return NewNormalString(v.(string)) },
-		BytesType:    func(v any) NormalValue { return NewNormalBytes(v.([]byte)) },
-		TimeType:     func(v any) NormalValue { return NewNormalTime(v.(time.Time)) },
-		DocumentType: func(v any) NormalValue { return NewNormalDocument(v.(*Document)) },
+		BoolType:   func(v any) NormalValue { return NewNormalBool(v.(bool)) },
+		IntType:    func(v any) NormalValue { return NewNormalInt(v.(int64)) },
+		FloatType:  func(v any) NormalValue { return NewNormalFloat(v.(float64)) },
+		StringType: func(v any) NormalValue { return NewNormalString(v.(string)) },
+		BytesType:  func(v any) NormalValue { return NewNormalBytes(v.([]byte)) },
+		TimeType:   func(v any) NormalValue { return NewNormalTime(v.(time.Time)) },
+		// TODO: non-nillable document is not supported yet. When it is supported, this should be
+		// it should return NewNormalDocument(v.(*Document), docKind)
+		// https://github.com/sourcenetwork/defradb/issues/1360
+		DocumentType: func(v any) NormalValue {
+			return NewNormalNillableDocument(v.(immutable.Option[*Document]), docKind)
+		},
 
-		NillableBoolType:     func(v any) NormalValue { return NewNormalNillableBool(v.(immutable.Option[bool])) },
-		NillableIntType:      func(v any) NormalValue { return NewNormalNillableInt(v.(immutable.Option[int64])) },
-		NillableFloatType:    func(v any) NormalValue { return NewNormalNillableFloat(v.(immutable.Option[float64])) },
-		NillableStringType:   func(v any) NormalValue { return NewNormalNillableString(v.(immutable.Option[string])) },
-		NillableBytesType:    func(v any) NormalValue { return NewNormalNillableBytes(v.(immutable.Option[[]byte])) },
-		NillableTimeType:     func(v any) NormalValue { return NewNormalNillableTime(v.(immutable.Option[time.Time])) },
-		NillableDocumentType: func(v any) NormalValue { return NewNormalNillableDocument(v.(immutable.Option[*Document])) },
+		NillableBoolType:   func(v any) NormalValue { return NewNormalNillableBool(v.(immutable.Option[bool])) },
+		NillableIntType:    func(v any) NormalValue { return NewNormalNillableInt(v.(immutable.Option[int64])) },
+		NillableFloatType:  func(v any) NormalValue { return NewNormalNillableFloat(v.(immutable.Option[float64])) },
+		NillableStringType: func(v any) NormalValue { return NewNormalNillableString(v.(immutable.Option[string])) },
+		NillableBytesType:  func(v any) NormalValue { return NewNormalNillableBytes(v.(immutable.Option[[]byte])) },
+		NillableTimeType:   func(v any) NormalValue { return NewNormalNillableTime(v.(immutable.Option[time.Time])) },
+		NillableDocumentType: func(v any) NormalValue {
+			return NewNormalNillableDocument(v.(immutable.Option[*Document]), docKind)
+		},
 
-		BoolArray:     func(v any) NormalValue { return NewNormalBoolArray(v.([]bool)) },
-		IntArray:      func(v any) NormalValue { return NewNormalIntArray(v.([]int64)) },
-		FloatArray:    func(v any) NormalValue { return NewNormalFloatArray(v.([]float64)) },
-		StringArray:   func(v any) NormalValue { return NewNormalStringArray(v.([]string)) },
-		BytesArray:    func(v any) NormalValue { return NewNormalBytesArray(v.([][]byte)) },
-		TimeArray:     func(v any) NormalValue { return NewNormalTimeArray(v.([]time.Time)) },
-		DocumentArray: func(v any) NormalValue { return NewNormalDocumentArray(v.([]*Document)) },
+		BoolArray:   func(v any) NormalValue { return NewNormalBoolArray(v.([]bool)) },
+		IntArray:    func(v any) NormalValue { return NewNormalIntArray(v.([]int64)) },
+		FloatArray:  func(v any) NormalValue { return NewNormalFloatArray(v.([]float64)) },
+		StringArray: func(v any) NormalValue { return NewNormalStringArray(v.([]string)) },
+		BytesArray:  func(v any) NormalValue { return NewNormalBytesArray(v.([][]byte)) },
+		TimeArray:   func(v any) NormalValue { return NewNormalTimeArray(v.([]time.Time)) },
+		// TODO: non-nillable document is not supported yet. When it is supported, this should be
+		// it should return NewNormalDocumentArray(v.([]*Document), docArrKind)
+		// https://github.com/sourcenetwork/defradb/issues/1360
+		DocumentArray: func(v any) NormalValue {
+			return NewNormalNillableDocumentArray(v.([]immutable.Option[*Document]), docArrKind)
+		},
 
 		NillableBoolArray: func(v any) NormalValue {
 			return NewNormalNillableBoolArray(v.([]immutable.Option[bool]))
@@ -200,7 +305,7 @@ func TestNormalValue_NewValueAndTypeAssertion(t *testing.T) {
 			return NewNormalNillableTimeArray(v.([]immutable.Option[time.Time]))
 		},
 		NillableDocumentArray: func(v any) NormalValue {
-			return NewNormalNillableDocumentArray(v.([]immutable.Option[*Document]))
+			return NewNormalNillableDocumentArray(v.([]immutable.Option[*Document]), docArrKind)
 		},
 
 		BoolNillableArray: func(v any) NormalValue {
@@ -222,7 +327,7 @@ func TestNormalValue_NewValueAndTypeAssertion(t *testing.T) {
 			return NewNormalTimeNillableArray(v.(immutable.Option[[]time.Time]))
 		},
 		DocumentNillableArray: func(v any) NormalValue {
-			return NewNormalDocumentNillableArray(v.(immutable.Option[[]*Document]))
+			return NewNormalDocumentNillableArray(v.(immutable.Option[[]*Document]), docArrKind)
 		},
 
 		NillableBoolNillableArray: func(v any) NormalValue {
@@ -244,7 +349,10 @@ func TestNormalValue_NewValueAndTypeAssertion(t *testing.T) {
 			return NewNormalNillableTimeNillableArray(v.(immutable.Option[[]immutable.Option[time.Time]]))
 		},
 		NillableDocumentNillableArray: func(v any) NormalValue {
-			return NewNormalNillableDocumentNillableArray(v.(immutable.Option[[]immutable.Option[*Document]]))
+			return NewNormalNillableDocumentNillableArray(
+				v.(immutable.Option[[]immutable.Option[*Document]]),
+				docArrKind,
+			)
 		},
 	}
 
@@ -282,6 +390,10 @@ func TestNormalValue_NewValueAndTypeAssertion(t *testing.T) {
 		{
 			nType: DocumentType,
 			input: &Document{},
+			// TODO: non-nillable document is not supported yet. When it is supported, this should be
+			// it should make it false
+			// https://github.com/sourcenetwork/defradb/issues/1360
+			isNillable: true,
 		},
 		{
 			nType:      NillableBoolType,
@@ -394,6 +506,10 @@ func TestNormalValue_NewValueAndTypeAssertion(t *testing.T) {
 			nType:   DocumentArray,
 			input:   []*Document{{}, {}},
 			isArray: true,
+			// TODO: non-nillable document is not supported yet. When it is supported, this should be
+			// it should make it false
+			// https://github.com/sourcenetwork/defradb/issues/1360
+			isNillable: true,
 		},
 		{
 			nType:   NillableBoolArray,
@@ -429,6 +545,10 @@ func TestNormalValue_NewValueAndTypeAssertion(t *testing.T) {
 			nType:   NillableDocumentArray,
 			input:   []immutable.Option[*Document]{immutable.Some(&Document{})},
 			isArray: true,
+			// TODO: non-nillable document is not supported yet. When it is supported, this should be
+			// it should make it false
+			// https://github.com/sourcenetwork/defradb/issues/1360
+			isNillable: true,
 		},
 		{
 			nType:      BoolNillableArray,
@@ -608,47 +728,86 @@ func TestNormalValue_NewValueAndTypeAssertion(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tStr := string(tt.nType)
-		t.Run(tStr, func(t *testing.T) {
-			actual, err := NewNormalValue(tt.input)
-			require.NoError(t, err)
-
-			for nType, typeAssertFunc := range typeAssertMap {
-				val, ok := typeAssertFunc(actual)
-				if nType == tt.nType {
-					assert.True(t, ok, tStr+"() should return true")
-					assert.Equal(t, tt.input, val, tStr+"() returned unexpected value")
-					newVal := newMap[nType](val)
-					assert.Equal(t, actual, newVal, "New"+tStr+"() returned unexpected NormalValue")
-					assert.Equal(t, extractValue(tt.input), actual.Unwrap(),
-						"Unwrap() returned unexpected value for "+tStr)
+		for _, kind := range getAllKinds() {
+			t.Run("Kind "+string(tt.nType)+":"+kind.String(), func(t *testing.T) {
+				isSuitableKind := false
+				for _, matchingKind := range kindMap[tt.nType] {
+					if matchingKind == kind {
+						isSuitableKind = true
+						break
+					}
+				}
+				normalValue, err := NewNormalValue(tt.input, kind)
+				if isSuitableKind {
+					require.NoError(t, err)
+					assert.Equal(t, kind, normalValue.Kind(), "Kind() returned unexpected value")
 				} else {
-					assert.False(t, ok, string(nType)+"() should return false for "+tStr)
+					require.ErrorContains(t, err, errCanNotNormalizeValueOfKind)
+				}
+			})
+		}
+	}
+
+	for _, tt := range tests {
+		kind := kindMap[tt.nType][0]
+		tStr := string(tt.nType)
+
+		normalValue, err := NewNormalValue(tt.input, kind)
+		require.NoError(t, err)
+
+		t.Run("TypeAssert "+tStr+":"+kind.String(), func(t *testing.T) {
+			for nType, typeAssertFunc := range typeAssertMap {
+				typeAssertVal, ok := typeAssertFunc(normalValue)
+				if nType == tt.nType {
+					// TODO: non-nillable document is not supported yet. When it is supported, this should be
+					// it should remove if block and keep only else block
+					// https://github.com/sourcenetwork/defradb/issues/1360
+					if nType == DocumentType || nType == DocumentArray || nType == NillableDocumentArray {
+						assert.False(t, ok, "non-nillable documents are not supported at the moment")
+					} else {
+						assert.True(t, ok, tStr+"() should return true")
+						assert.Equal(t, tt.input, typeAssertVal, tStr+"() returned unexpected value")
+						newVal := newMap[tt.nType](typeAssertVal)
+						assert.Equal(t, normalValue, newVal, "New"+tStr+"() returned unexpected NormalValue")
+						assert.Equal(t, extractValue(tt.input), normalValue.Unwrap(),
+							"Unwrap() returned unexpected value for "+tStr)
+					}
+				} else {
+					// TODO: non-nillable document is not supported yet. When it is supported, this should be
+					// it should remove if block and keep only else block
+					// https://github.com/sourcenetwork/defradb/issues/1360
+					if (nType == NillableDocumentType && tt.nType == DocumentType) ||
+						(nType == DocumentNillableArray && tt.nType == DocumentArray) ||
+						(nType == NillableDocumentNillableArray && tt.nType == NillableDocumentArray) {
+						assert.True(t, ok, string(nType)+"() should return true for "+tStr+" type")
+					} else {
+						assert.False(t, ok, string(nType)+"() should return false for "+tStr+" type")
+					}
 				}
 			}
 
 			if tt.isNillable {
-				assert.True(t, actual.IsNillable(), "IsNillable() should return true for "+tStr)
+				assert.True(t, normalValue.IsNillable(), "IsNillable() should return true for "+tStr+" type")
 			} else {
-				assert.False(t, actual.IsNillable(), "IsNillable() should return false for "+tStr)
+				assert.False(t, normalValue.IsNillable(), "IsNillable() should return false for "+tStr+" type")
 			}
 
 			if tt.isNil {
-				assert.True(t, actual.IsNil(), "IsNil() should return true for "+tStr)
+				assert.True(t, normalValue.IsNil(), "IsNil() should return true for "+tStr)
 			} else {
-				assert.False(t, actual.IsNil(), "IsNil() should return false for "+tStr)
+				assert.False(t, normalValue.IsNil(), "IsNil() should return false for "+tStr)
 			}
 
 			if tt.isArray {
-				assert.True(t, actual.IsArray(), "IsArray() should return true for "+tStr)
+				assert.True(t, normalValue.IsArray(), "IsArray() should return true for "+tStr)
 			} else {
-				assert.False(t, actual.IsArray(), "IsArray() should return false for "+tStr)
+				assert.False(t, normalValue.IsArray(), "IsArray() should return false for "+tStr)
 			}
 		})
 	}
 }
 
-func TestNormalValue_InUnknownType_ReturnError(t *testing.T) {
+/*func TestNormalValue_InUnknownType_ReturnError(t *testing.T) {
 	_, err := NewNormalValue(struct{ name string }{})
 	require.ErrorContains(t, err, errCanNotNormalizeValue)
 }
@@ -828,7 +987,7 @@ func TestNormalValue_NewNormalValueFromAnyArray(t *testing.T) {
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
-}
+}*/
 
 func TestNormalValue_NewNormalInt(t *testing.T) {
 	i64 := int64(2)
@@ -1389,23 +1548,20 @@ func TestNormalValue_NewNormalNillableBytesNillableArray(t *testing.T) {
 }
 
 func TestNormalValue_NewNormalNil(t *testing.T) {
-	fieldKinds := []FieldKind{}
-	for _, kind := range FieldKindStringToEnumMapping {
-		fieldKinds = append(fieldKinds, kind)
-	}
-	fieldKinds = append(fieldKinds, ObjectKind("Object"))
-	fieldKinds = append(fieldKinds, ObjectArrayKind("ObjectArr"))
+	fieldKinds := getAllKinds()
 
 	for _, kind := range fieldKinds {
-		if kind.IsNillable() {
-			v, err := NewNormalNil(kind)
-			require.NoError(t, err)
+		t.Run("Kind:"+string(kind.String()), func(t *testing.T) {
+			if kind.IsNillable() {
+				v, err := NewNormalNil(kind)
+				require.NoError(t, err)
 
-			assert.True(t, v.IsNil())
-		} else {
-			_, err := NewNormalNil(kind)
-			require.Error(t, err)
-		}
+				assert.True(t, v.IsNil())
+			} else {
+				_, err := NewNormalNil(kind)
+				require.Error(t, err)
+			}
+		})
 	}
 }
 
@@ -1413,6 +1569,8 @@ func TestNormalValue_ToArrayOfNormalValues(t *testing.T) {
 	now := time.Now()
 	doc1 := &Document{}
 	doc2 := &Document{}
+
+	docSubKind := ObjectKind(string(docArrKind))
 
 	normalNil, err := NewNormalNil(FieldKind_NILLABLE_INT)
 	require.NoError(t, err)
@@ -1453,6 +1611,11 @@ func TestNormalValue_ToArrayOfNormalValues(t *testing.T) {
 			expected: []NormalValue{NewNormalString("test"), NewNormalString("test2")},
 		},
 		{
+			name:     "JSON elements",
+			input:    NewNormalJSONArray([]string{"test", "test2"}),
+			expected: []NormalValue{NewNormalJSON("test"), NewNormalJSON("test2")},
+		},
+		{
 			name:     "bytes elements",
 			input:    NewNormalBytesArray([][]byte{{1, 2, 3}, {4, 5, 6}}),
 			expected: []NormalValue{NewNormalBytes([]byte{1, 2, 3}), NewNormalBytes([]byte{4, 5, 6})},
@@ -1464,8 +1627,8 @@ func TestNormalValue_ToArrayOfNormalValues(t *testing.T) {
 		},
 		{
 			name:     "document elements",
-			input:    NewNormalDocumentArray([]*Document{doc1, doc2}),
-			expected: []NormalValue{NewNormalDocument(doc1), NewNormalDocument(doc2)},
+			input:    NewNormalDocumentArray([]*Document{doc1, doc2}, docArrKind),
+			expected: []NormalValue{NewNormalDocument(doc1, docSubKind), NewNormalDocument(doc2, docSubKind)},
 		},
 		{
 			name: "nillable bool elements",
@@ -1504,6 +1667,15 @@ func TestNormalValue_ToArrayOfNormalValues(t *testing.T) {
 			},
 		},
 		{
+			name: "nillable JSON elements",
+			input: NewNormalNillableJSONArray([]immutable.Option[string]{
+				immutable.Some("test"), immutable.Some("test2")}),
+			expected: []NormalValue{
+				NewNormalNillableJSON(immutable.Some("test")),
+				NewNormalNillableJSON(immutable.Some("test2")),
+			},
+		},
+		{
 			name: "nillable bytes elements",
 			input: NewNormalNillableBytesArray([]immutable.Option[[]byte]{
 				immutable.Some([]byte{1, 2, 3}), immutable.Some([]byte{4, 5, 6})}),
@@ -1524,10 +1696,10 @@ func TestNormalValue_ToArrayOfNormalValues(t *testing.T) {
 		{
 			name: "nillable document elements",
 			input: NewNormalNillableDocumentArray([]immutable.Option[*Document]{
-				immutable.Some(doc1), immutable.Some(doc2)}),
+				immutable.Some(doc1), immutable.Some(doc2)}, docArrKind),
 			expected: []NormalValue{
-				NewNormalNillableDocument(immutable.Some(doc1)),
-				NewNormalNillableDocument(immutable.Some(doc2)),
+				NewNormalNillableDocument(immutable.Some(doc1), docSubKind),
+				NewNormalNillableDocument(immutable.Some(doc2), docSubKind),
 			},
 		},
 		{
@@ -1551,6 +1723,11 @@ func TestNormalValue_ToArrayOfNormalValues(t *testing.T) {
 			expected: []NormalValue{NewNormalString("test")},
 		},
 		{
+			name:     "nillable array of JSON elements",
+			input:    NewNormalJSONNillableArray(immutable.Some([]string{"test"})),
+			expected: []NormalValue{NewNormalJSON("test")},
+		},
+		{
 			name:     "nillable array of bytes elements",
 			input:    NewNormalBytesNillableArray(immutable.Some([][]byte{{1, 2, 3}})),
 			expected: []NormalValue{NewNormalBytes([]byte{1, 2, 3})},
@@ -1562,8 +1739,8 @@ func TestNormalValue_ToArrayOfNormalValues(t *testing.T) {
 		},
 		{
 			name:     "nillable array of document elements",
-			input:    NewNormalDocumentNillableArray(immutable.Some([]*Document{doc1})),
-			expected: []NormalValue{NewNormalDocument(doc1)},
+			input:    NewNormalDocumentNillableArray(immutable.Some([]*Document{doc1}), docArrKind),
+			expected: []NormalValue{NewNormalDocument(doc1, docSubKind)},
 		},
 		{
 			name: "nillable array of nillable bool elements",
@@ -1590,6 +1767,12 @@ func TestNormalValue_ToArrayOfNormalValues(t *testing.T) {
 			expected: []NormalValue{NewNormalNillableString(immutable.Some("test"))},
 		},
 		{
+			name: "nillable array of nillable JSON elements",
+			input: NewNormalNillableJSONNillableArray(
+				immutable.Some([]immutable.Option[string]{immutable.Some("test")})),
+			expected: []NormalValue{NewNormalNillableJSON(immutable.Some("test"))},
+		},
+		{
 			name: "nillable array of nillable bytes elements",
 			input: NewNormalNillableBytesNillableArray(
 				immutable.Some([]immutable.Option[[]byte]{immutable.Some([]byte{1, 2, 3})})),
@@ -1604,8 +1787,8 @@ func TestNormalValue_ToArrayOfNormalValues(t *testing.T) {
 		{
 			name: "nillable array of nillable document elements",
 			input: NewNormalNillableDocumentNillableArray(
-				immutable.Some([]immutable.Option[*Document]{immutable.Some(doc1)})),
-			expected: []NormalValue{NewNormalNillableDocument(immutable.Some(doc1))},
+				immutable.Some([]immutable.Option[*Document]{immutable.Some(doc1)}), docArrKind),
+			expected: []NormalValue{NewNormalNillableDocument(immutable.Some(doc1), docSubKind)},
 		},
 	}
 

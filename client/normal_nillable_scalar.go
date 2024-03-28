@@ -36,8 +36,8 @@ func (v baseNillableNormalValue[T]) IsNillable() bool {
 	return true
 }
 
-func newBaseNillableNormalValue[T any](val immutable.Option[T]) baseNillableNormalValue[T] {
-	return baseNillableNormalValue[T]{newBaseNormalValue(val)}
+func newBaseNillableNormalValue[T any](val immutable.Option[T], kind FieldKind) baseNillableNormalValue[T] {
+	return baseNillableNormalValue[T]{newBaseNormalValue(val, kind)}
 }
 
 type normalNillableBool struct {
@@ -98,37 +98,48 @@ func (v normalNillableDocument) NillableDocument() (immutable.Option[*Document],
 
 // NewNormalNillableBool creates a new NormalValue that represents a `immutable.Option[bool]` value.
 func NewNormalNillableBool(val immutable.Option[bool]) NormalValue {
-	return normalNillableBool{newBaseNillableNormalValue(val)}
+	return normalNillableBool{newBaseNillableNormalValue(val, FieldKind_NILLABLE_BOOL)}
 }
 
 // NewNormalNillableInt creates a new NormalValue that represents a `immutable.Option[int64]` value.
 func NewNormalNillableInt[T constraints.Integer | constraints.Float](val immutable.Option[T]) NormalValue {
-	return normalNillableInt{newBaseNillableNormalValue(normalizeNillableNum[int64](val))}
+	return normalNillableInt{newBaseNillableNormalValue(normalizeNillableNum[int64](val), FieldKind_NILLABLE_INT)}
 }
 
 // NewNormalNillableFloat creates a new NormalValue that represents a `immutable.Option[float64]` value.
 func NewNormalNillableFloat[T constraints.Integer | constraints.Float](val immutable.Option[T]) NormalValue {
-	return normalNillableFloat{newBaseNillableNormalValue(normalizeNillableNum[float64](val))}
+	return normalNillableFloat{newBaseNillableNormalValue(normalizeNillableNum[float64](val), FieldKind_NILLABLE_FLOAT)}
 }
 
 // NewNormalNillableString creates a new NormalValue that represents a `immutable.Option[string]` value.
 func NewNormalNillableString[T string | []byte](val immutable.Option[T]) NormalValue {
-	return normalNillableString{newBaseNillableNormalValue(normalizeNillableChars[string](val))}
+	return normalNillableString{
+		newBaseNillableNormalValue(normalizeNillableChars[string](val), FieldKind_NILLABLE_STRING),
+	}
+}
+
+// NewNormalNillableJSON creates a new NormalValue that represents nillable JSON a `immutable.Option[string]` value.
+func NewNormalNillableJSON[T string | []byte](val immutable.Option[T]) NormalValue {
+	return normalNillableString{
+		newBaseNillableNormalValue(normalizeNillableChars[string](val), FieldKind_NILLABLE_JSON),
+	}
 }
 
 // NewNormalNillableBytes creates a new NormalValue that represents a `immutable.Option[[]byte]` value.
 func NewNormalNillableBytes[T string | []byte](val immutable.Option[T]) NormalValue {
-	return normalNillableBytes{newBaseNillableNormalValue(normalizeNillableChars[[]byte](val))}
+	return normalNillableBytes{
+		newBaseNillableNormalValue(normalizeNillableChars[[]byte](val), FieldKind_NILLABLE_BLOB),
+	}
 }
 
 // NewNormalNillableTime creates a new NormalValue that represents a `immutable.Option[time.Time]` value.
 func NewNormalNillableTime(val immutable.Option[time.Time]) NormalValue {
-	return normalNillableTime{newBaseNillableNormalValue(val)}
+	return normalNillableTime{newBaseNillableNormalValue(val, FieldKind_NILLABLE_DATETIME)}
 }
 
 // NewNormalNillableDocument creates a new NormalValue that represents a `immutable.Option[*Document]` value.
-func NewNormalNillableDocument(val immutable.Option[*Document]) NormalValue {
-	return normalNillableDocument{newBaseNillableNormalValue(val)}
+func NewNormalNillableDocument(val immutable.Option[*Document], kind ObjectKind) NormalValue {
+	return normalNillableDocument{newBaseNillableNormalValue(val, kind)}
 }
 
 func normalizeNillableNum[R int64 | float64, T constraints.Integer | constraints.Float](
