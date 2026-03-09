@@ -1,12 +1,13 @@
-// Copyright 2022 Democratized Data Foundation
+// Copyright 2026 Democratized Data Foundation
 //
-// Use of this software is governed by the Business Source License
-// included in the file licenses/BSL.txt.
+// This file is part of the DefraDB test suite.
 //
-// As of the Change Date specified in that file, in accordance with
-// the Business Source License, use of this software will be governed
-// by the Apache License, Version 2.0, included in the file
-// licenses/APL.txt.
+// The DefraDB test suite is licensed under either:
+//
+//   (1) GNU Affero General Public License v3
+//   (2) Business Source License 1.1
+//
+// See tests/LICENSE for details.
 
 package commits
 
@@ -285,6 +286,101 @@ func TestQueryCommitsWithDocIDAndUpdateAndLinks(t *testing.T) {
 					},
 				},
 				NonOrderedResults: true,
+			},
+		},
+	}
+
+	testUtils.ExecuteTestCase(t, test)
+}
+
+func TestQueryCommits_DocIDEmptyList(t *testing.T) {
+	test := testUtils.TestCase{
+		Actions: []any{
+			updateUserCollectionSchema(),
+			&action.AddDoc{
+				DocMap: map[string]any{
+					"name": "John",
+				},
+			},
+			&action.AddDoc{
+				DocMap: map[string]any{
+					"name": "Fred",
+				},
+			},
+			&action.Request{
+				Request: `query {
+						_commits(docID: []) {
+							cid
+						}
+					}`,
+				Results: map[string]any{
+					"_commits": []map[string]any{},
+				},
+			},
+		},
+	}
+
+	testUtils.ExecuteTestCase(t, test)
+}
+
+func TestQueryCommits_DocIDListOfOne(t *testing.T) {
+	test := testUtils.TestCase{
+		Actions: []any{
+			updateUserCollectionSchema(),
+			&action.AddDoc{
+				DocMap: map[string]any{
+					"name": "John",
+				},
+			},
+			&action.AddDoc{
+				DocMap: map[string]any{
+					"name": "Fred",
+				},
+			},
+			&action.Request{
+				Request: `query {
+						_commits(docID: ["bae-0fcd42bc-f8ab-510b-9b71-f42b72d75d53"]) {
+							cid
+						}
+					}`,
+				Results: map[string]any{
+					"_commits": []map[string]any{
+						{
+							"cid": testUtils.NewUniqueValue(),
+						},
+						{
+							"cid": testUtils.NewUniqueValue(),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	testUtils.ExecuteTestCase(t, test)
+}
+
+func TestQueryCommits_DocIDListOfMany(t *testing.T) {
+	test := testUtils.TestCase{
+		Actions: []any{
+			updateUserCollectionSchema(),
+			&action.AddDoc{
+				DocMap: map[string]any{
+					"name": "John",
+				},
+			},
+			&action.AddDoc{
+				DocMap: map[string]any{
+					"name": "Fred",
+				},
+			},
+			&action.Request{
+				Request: `query {
+						_commits(docID: ["bae-0fcd42bc-f8ab-510b-9b71-f42b72d75d53", "bae-234fd13b-a9ea-59b5-9830-7e903a72bd24"]) {
+							cid
+						}
+					}`,
+				ExpectedError: "querying by multiple docIDs is not yet supported",
 			},
 		},
 	}

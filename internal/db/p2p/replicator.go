@@ -178,7 +178,6 @@ func (p *P2P) AddReplicator(ctx context.Context, addresses []string, collectionN
 func (p *P2P) pushHeadsForAllDocs(ctx context.Context, col client.Collection, peerID string) error {
 	// this method cannot be run inside of a transaction
 	// so we have to create an unsafe iterator manually
-	// instead of calling db.GetAllDocIDs
 	type unsafeDatastore interface {
 		Unsafe() corekv.ReaderWriter
 	}
@@ -298,7 +297,7 @@ func (p *P2P) DeleteReplicator(ctx context.Context, id string, collectionNames .
 		storedCollectionIDs = make(map[string]struct{})
 	}
 
-	// Update the list of schemas for this replicator prior to persisting.
+	// Update the list of collections for this replicator prior to persisting.
 	storedRep.CollectionIDs = []string{}
 	for id := range storedCollectionIDs {
 		storedRep.CollectionIDs = append(storedRep.CollectionIDs, id)

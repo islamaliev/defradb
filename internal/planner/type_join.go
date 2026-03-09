@@ -270,7 +270,7 @@ func prepareScanNodeFilterForTypeJoin(
 ) {
 	subType.ShowDeleted = parent.selectReq.ShowDeleted
 
-	scan, ok := source.(*scanNode)
+	scan, ok := walkAndFindPlanType[*scanNode](source)
 	if !ok || scan.filter == nil {
 		return
 	}
