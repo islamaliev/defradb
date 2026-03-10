@@ -13,6 +13,8 @@ package planner
 import (
 	"errors"
 
+	"github.com/sourcenetwork/immutable/enumerable"
+
 	"github.com/sourcenetwork/defradb/client/request"
 	"github.com/sourcenetwork/defradb/internal/core"
 	"github.com/sourcenetwork/defradb/internal/db/fetcher"
@@ -69,9 +71,10 @@ type orphanExecInfo struct {
 // them sequentially.
 //
 // Wrapper mode (source != nil): Wraps a source planNode for secondary-side orphans.
-// Two distinct phases: (1) iterate parents via point lookups on the child's unique
-// FK index to find orphans, (2) stream source docs from the ordered join.
-// Orphans first for ASC, last for DESC.
+// Two distinct phases concatenated via enumerable.Concat:
+//
+//	ASC: orphans (via point lookup) → source docs (from ordered join)
+//	DESC: source docs (from ordered join) → orphans (via point lookup)
 type orphanNode struct {
 	docMapper
 
@@ -98,9 +101,9 @@ type orphanNode struct {
 	current int
 	fetched bool
 
-	// wrapper iteration state (source != nil)
-	docsToYield     []core.Doc
-	sourceExhausted bool
+	// wrapper iteration state (source != nil) — phases is the concatenation of
+	// orphan and source enumerables, ordered by ASC/DESC.
+	phases enumerable.Enumerable[core.Doc]
 
 	// Streaming point-lookup state — lazily iterates parents and yields one orphan per Next().
 	parentIter         *subQueryFetcher
@@ -153,8 +156,7 @@ func (n *orphanNode) Init() error {
 	n.docs = nil
 	n.current = 0
 	n.fetched = false
-	n.docsToYield = nil
-	n.sourceExhausted = false
+	n.phases = nil
 	n.pointLookupDone = false
 	if n.parentIter != nil {
 		_ = n.parentIter.closeIterator()
@@ -221,27 +223,28 @@ func (n *orphanNode) nextStandalone() (bool, error) {
 	return true, nil
 }
 
-// nextWrapped dispatches to ASC or DESC wrapper iteration.
+// nextWrapped delegates to the concatenated phases enumerable.
 func (n *orphanNode) nextWrapped() (bool, error) {
-	if len(n.docsToYield) > 0 {
-		n.docsToYield = n.docsToYield[1:]
-		if len(n.docsToYield) > 0 {
-			return true, nil
+	if n.phases == nil {
+		orphanEnum := &orphanEnumerable{node: n}
+		sourceEnum := &sourceEnumerable{source: n.source}
+
+		if n.orderDirection == mapper.ASC {
+			n.phases = enumerable.Concat(orphanEnum, sourceEnum)
+		} else {
+			n.phases = enumerable.Concat(sourceEnum, orphanEnum)
 		}
 	}
-
-	if n.orderDirection == mapper.ASC {
-		return n.nextASC()
-	}
-	return n.nextDESC()
+	return n.phases.Next()
 }
 
 func (n *orphanNode) Value() core.Doc {
 	if n.source != nil {
-		if len(n.docsToYield) == 0 {
+		if n.phases == nil {
 			return core.Doc{}
 		}
-		return n.docsToYield[0]
+		doc, _ := n.phases.Value()
+		return doc
 	}
 	if n.current > 0 && n.current <= len(n.docs) {
 		return n.docs[n.current-1]
@@ -249,62 +252,44 @@ func (n *orphanNode) Value() core.Doc {
 	return core.Doc{}
 }
 
-// nextASC yields orphans first (nulls before non-nulls in ASC order),
-// then streams source docs from the ordered join.
-func (n *orphanNode) nextASC() (bool, error) {
-	if !n.pointLookupDone {
-		doc, found, err := n.nextOrphanByPointLookup()
-		if err != nil {
-			return false, err
-		}
-		if found {
-			n.docsToYield = append(n.docsToYield, doc)
-			return true, nil
-		}
-	}
-
-	if !n.sourceExhausted {
-		hasNext, err := n.source.Next()
-		if err != nil {
-			return false, err
-		}
-		if hasNext {
-			n.docsToYield = append(n.docsToYield, n.source.Value())
-			return true, nil
-		}
-		n.sourceExhausted = true
-	}
-
-	return false, nil
+// orphanEnumerable wraps the point-lookup orphan iterator as an Enumerable[core.Doc].
+type orphanEnumerable struct {
+	node    *orphanNode
+	current core.Doc
 }
 
-// nextDESC streams source docs first, then yields orphans.
-func (n *orphanNode) nextDESC() (bool, error) {
-	if !n.sourceExhausted {
-		hasNext, err := n.source.Next()
-		if err != nil {
-			return false, err
-		}
-		if hasNext {
-			n.docsToYield = append(n.docsToYield, n.source.Value())
-			return true, nil
-		}
-		n.sourceExhausted = true
+func (e *orphanEnumerable) Next() (bool, error) {
+	doc, found, err := e.node.nextOrphanByPointLookup()
+	if err != nil {
+		return false, err
 	}
-
-	if !n.pointLookupDone {
-		doc, found, err := n.nextOrphanByPointLookup()
-		if err != nil {
-			return false, err
-		}
-		if found {
-			n.docsToYield = append(n.docsToYield, doc)
-			return true, nil
-		}
+	if !found {
+		return false, nil
 	}
-
-	return false, nil
+	e.current = doc
+	return true, nil
 }
+
+func (e *orphanEnumerable) Value() (core.Doc, error) {
+	return e.current, nil
+}
+
+func (e *orphanEnumerable) Reset() {}
+
+// sourceEnumerable wraps a planNode as an Enumerable[core.Doc].
+type sourceEnumerable struct {
+	source planNode
+}
+
+func (e *sourceEnumerable) Next() (bool, error) {
+	return e.source.Next()
+}
+
+func (e *sourceEnumerable) Value() (core.Doc, error) {
+	return e.source.Value(), nil
+}
+
+func (e *sourceEnumerable) Reset() {}
 
 // fetchOrphans fetches and returns parent documents that have no related children.
 // Used only in standalone mode (FK IS NULL path for primary-side parents) and
@@ -378,6 +363,7 @@ func (n *orphanNode) initPointLookupState() error {
 		parentFilter = n.subQueryFilter
 	}
 
+	// Parent iterator — walks parent docs lazily.
 	n.parentIter = newSubQueryFetcher(
 		parentScan.p.ctx,
 		parentScan.p.identity,
@@ -393,6 +379,7 @@ func (n *orphanNode) initPointLookupState() error {
 		return err
 	}
 
+	// Child lookup fetcher — used for point lookups on each parent.
 	n.childLookup = newSubQueryFetcher(
 		childScan.p.ctx,
 		childScan.p.identity,
