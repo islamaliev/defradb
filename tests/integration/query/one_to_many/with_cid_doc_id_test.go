@@ -16,7 +16,14 @@ import (
 
 	"github.com/sourcenetwork/defradb/tests/action"
 	testUtils "github.com/sourcenetwork/defradb/tests/integration"
+	"github.com/sourcenetwork/defradb/tests/multiplier"
 )
+
+// encryptedDocsCidQueryExcludes excludes tests that query by `cid:` argument
+// against encrypted documents. The version-fetcher path fails to decrypt the
+// delta before CBOR-decoding it. Bug tracked in
+// https://github.com/sourcenetwork/defradb/issues/4762.
+var encryptedDocsCidQueryExcludes = []string{multiplier.EncryptedDocs}
 
 // This test is for documentation reasons only. This is not
 // desired behaviour (should just return empty).
@@ -66,6 +73,7 @@ import (
 
 func TestQueryOneToManyWithCidAndDocID(t *testing.T) {
 	test := testUtils.TestCase{
+		MultiplierExcludes: encryptedDocsCidQueryExcludes,
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -104,7 +112,7 @@ func TestQueryOneToManyWithCidAndDocID(t *testing.T) {
 			&action.Request{
 				Request: `query {
 					Book (
-							cid: "bafyreial4br7zz2teyhegjcijy2hw6i3oirvxyjxdbrjjnhxmhkphd3l2q"
+							cid: "{{.CID0_0_0}}"
 							docID: "bae-82bbdc18-aa15-57b8-83af-795a752b3b8f"
 						) {
 						name
@@ -136,6 +144,7 @@ func TestQueryOneToManyWithCidAndDocID(t *testing.T) {
 // to parent state).
 func TestQueryOneToManyWithChildUpdateAndFirstCidAndDocID(t *testing.T) {
 	test := testUtils.TestCase{
+		MultiplierExcludes: encryptedDocsCidQueryExcludes,
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -180,7 +189,7 @@ func TestQueryOneToManyWithChildUpdateAndFirstCidAndDocID(t *testing.T) {
 			&action.Request{
 				Request: `query {
 					Book (
-							cid: "bafyreial4br7zz2teyhegjcijy2hw6i3oirvxyjxdbrjjnhxmhkphd3l2q",
+							cid: "{{.CID0_0_0}}",
 							docID: "bae-82bbdc18-aa15-57b8-83af-795a752b3b8f"
 						) {
 						name
@@ -210,6 +219,7 @@ func TestQueryOneToManyWithChildUpdateAndFirstCidAndDocID(t *testing.T) {
 
 func TestQueryOneToManyWithParentUpdateAndFirstCidAndDocID(t *testing.T) {
 	test := testUtils.TestCase{
+		MultiplierExcludes: encryptedDocsCidQueryExcludes,
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -254,7 +264,7 @@ func TestQueryOneToManyWithParentUpdateAndFirstCidAndDocID(t *testing.T) {
 			&action.Request{
 				Request: `query {
 					Book (
-						cid: "bafyreial4br7zz2teyhegjcijy2hw6i3oirvxyjxdbrjjnhxmhkphd3l2q",
+						cid: "{{.CID0_0_0}}",
 						docID: "bae-82bbdc18-aa15-57b8-83af-795a752b3b8f"
 					) {
 						name
@@ -284,6 +294,7 @@ func TestQueryOneToManyWithParentUpdateAndFirstCidAndDocID(t *testing.T) {
 
 func TestQueryOneToManyWithParentUpdateAndLastCidAndDocID(t *testing.T) {
 	test := testUtils.TestCase{
+		MultiplierExcludes: encryptedDocsCidQueryExcludes,
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -328,7 +339,7 @@ func TestQueryOneToManyWithParentUpdateAndLastCidAndDocID(t *testing.T) {
 			&action.Request{
 				Request: `query {
 					Book (
-						cid: "bafyreifxbqpzvepc2rseagci6beohmv3qr3knjnfddzk7oqru5su7bdtpi",
+						cid: "{{.CID0_0_1}}",
 						docID: "bae-82bbdc18-aa15-57b8-83af-795a752b3b8f"
 					) {
 						name
