@@ -40,6 +40,7 @@ import (
 	acpDB "github.com/sourcenetwork/defradb/internal/db/acp"
 	"github.com/sourcenetwork/defradb/internal/db/description"
 	"github.com/sourcenetwork/defradb/internal/db/p2p/protocol"
+	"github.com/sourcenetwork/defradb/internal/debug"
 	"github.com/sourcenetwork/defradb/internal/kms"
 	"github.com/sourcenetwork/defradb/internal/se"
 	"github.com/sourcenetwork/defradb/internal/telemetry"
@@ -138,6 +139,13 @@ type P2P struct {
 
 	// pushHandlers are called when documents are pushed to replicators
 	pushHandlers []PushToReplicatorsHandler
+
+	// trc is a per-instance debug tracer prefixed with the node's short peer ID
+	// so sender vs receiver lines are visually distinguishable.
+	trc *debug.Tracer
+
+	// actor is a short tag used in the global Timeline (e.g. "NAwNJ").
+	actor string
 }
 
 // pushLogCommProcessor implements CommProcessor for push log functionality
@@ -178,6 +186,15 @@ func New(
 	collectionRetriever kms.CollectionRetriever,
 	collectionRepository *description.CollectionRepository,
 ) (*P2P, error) {
+	// Build a per-instance tracer prefix from a short suffix of the node's peer ID
+	// (last 4 chars of the libp2p PeerID base58). This lets sender/receiver lines
+	// be told apart visually in interleaved output.
+	pidStr := host.ID()
+	suffix := pidStr
+	if len(suffix) > 4 {
+		suffix = suffix[len(suffix)-4:]
+	}
+
 	p := P2P{
 		ctx:                  ctx,
 		db:                   db,
@@ -190,6 +207,8 @@ func New(
 		retryIntervals:       db.RetryIntervals(),
 		processQueue:         newProcessQueue(),
 		syncBlockLinkTimeout: db.P2PBlockSyncTimeout(),
+		trc:                  debug.NewTracer("p2p-" + suffix),
+		actor:                "N-" + suffix,
 	}
 	p.replicatorProtocol = protocol.NewCommChannel(host, "rep", &pushLogCommProcessor{p2p: &p})
 
@@ -314,12 +333,17 @@ func (p *P2P) updateReplicators(ctx context.Context, id string, addresses []stri
 //
 // This is used as a filter in bitswap to determine if we should send the block to the requesting peer.
 func (p *P2P) hasAccess(ctx context.Context, pid string, c cid.Cid) bool {
+	defer p.trc.Enter("hasAccess (sender filter)")()
+	p.trc.Println("from peer=%s cid=%s", pid, c.String())
+	debug.DefaultTimeline.Log(p.actor, "[send] hasAccess request cid=%s", shortCID(c.String()))
 	if !p.db.DocumentACP().HasValue() {
+		p.trc.Println("no document ACP -> allow")
 		return true
 	}
 
 	rawblock, err := p.db.Multistore().Blockstore().Get(ctx, c)
 	if err != nil {
+		p.trc.Println("blockstore Get FAILED err=%v -> deny", err)
 		if !ipld.IsNotFound(err) {
 			log.ErrorE("Failed to get block", err)
 		}
@@ -329,6 +353,8 @@ func (p *P2P) hasAccess(ctx context.Context, pid string, c cid.Cid) bool {
 	_, err = coreblock.GetSignatureBlockFromBytes(rawblock.RawData())
 	if err == nil {
 		// If the block is a signature block, we can safely send it to the requesting peer.
+		p.trc.Println("block is signature block -> allow (no ACP check)")
+		debug.DefaultTimeline.Log(p.actor, "[send] hasAccess: signature block -> allow (no ACP)")
 		return true
 	}
 
@@ -348,11 +374,13 @@ func (p *P2P) hasAccess(ctx context.Context, pid string, c cid.Cid) bool {
 	}
 
 	if block.Delta.IsDefinition() {
+		p.trc.Println("block is a definition delta -> allow")
 		return true
 	}
 
 	ident, err := p.db.GetNodeIdentity(p.ctx)
 	if err != nil {
+		p.trc.Println("GetNodeIdentity FAILED err=%v -> deny", err)
 		log.ErrorE("Failed to get node identity", err)
 		return false
 	}
@@ -363,10 +391,12 @@ func (p *P2P) hasAccess(ctx context.Context, pid string, c cid.Cid) bool {
 
 	cols, err := p.db.GetCollections(ctx, getColOpts)
 	if err != nil {
+		p.trc.Println("GetCollections FAILED err=%v -> deny", err)
 		log.ErrorE("Failed to get collections", err)
 		return false
 	}
 	if len(cols) == 0 {
+		p.trc.Println("no collections found -> deny")
 		log.Info("No collections found",
 			corelog.Any("Collection Version ID", block.Delta.GetCollectionVersionID()))
 		return false
@@ -378,10 +408,14 @@ func (p *P2P) hasAccess(ctx context.Context, pid string, c cid.Cid) bool {
 		_, exists := peerList[pid]
 		if exists {
 			p.repMu.Unlock()
+			p.trc.Println("peer is in replicators list -> allow (no ACP check)")
+			debug.DefaultTimeline.Log(p.actor, "[send] hasAccess: peer in replicators list -> allow (no ACP)")
 			return true
 		}
 	}
 	p.repMu.Unlock()
+	p.trc.Println("peer NOT in replicators list -> will check ACP")
+	debug.DefaultTimeline.Log(p.actor, "[send] hasAccess: peer NOT in replicators list -> SourceHub check")
 
 	identFunc := func() immutable.Option[identity.Identity] {
 		p.piMu.RLock()
@@ -417,6 +451,8 @@ func (p *P2P) hasAccess(ctx context.Context, pid string, c cid.Cid) bool {
 		return immutable.Some(ident)
 	}
 
+	p.trc.Println("calling SourceHub CheckDocAccessWithIdentityFunc (sender side)")
+	debug.DefaultTimeline.Log(p.actor, "[send] -> SourceHub CheckDocAccess (start)")
 	peerHasAccess, err := acpDB.CheckDocAccessWithIdentityFunc(
 		ctx,
 		identFunc,
@@ -427,9 +463,13 @@ func (p *P2P) hasAccess(ctx context.Context, pid string, c cid.Cid) bool {
 		string(block.Delta.GetDocID()),
 	)
 	if err != nil {
+		p.trc.Println("SourceHub check ERROR: %v", err)
+		debug.DefaultTimeline.Log(p.actor, "[send] <- SourceHub ERROR: %v", err)
 		log.ErrorE("Failed to check access", err)
 		return false
 	}
+	p.trc.Println("SourceHub answer: peerHasAccess=%v", peerHasAccess)
+	debug.DefaultTimeline.Log(p.actor, "[send] <- SourceHub answer: peerHasAccess=%v (serve block)", peerHasAccess)
 
 	return peerHasAccess
 }
@@ -440,7 +480,10 @@ func (p *P2P) hasAccess(ctx context.Context, pid string, c cid.Cid) bool {
 // doesn't have access or if we get an error. The node sending is ultimately responsible for
 // ensuring that the recipient has access.
 func (p *P2P) trySelfHasAccess(ctx context.Context, block *coreblock.Block, collectionID string) (bool, error) {
+	defer p.trc.Enter("trySelfHasAccess (receiver gate)")()
+	p.trc.Println("docID=%s collectionID=%s", string(block.Delta.GetDocID()), collectionID)
 	if !p.db.DocumentACP().HasValue() {
+		p.trc.Println("no document ACP -> allow")
 		return true, nil
 	}
 
@@ -466,6 +509,8 @@ func (p *P2P) trySelfHasAccess(ctx context.Context, block *coreblock.Block, coll
 		return true, nil
 	}
 
+	p.trc.Println("calling SourceHub CheckDocAccessWithIdentityFunc (receiver side, identity=%s)", ident.Value().DID)
+	debug.DefaultTimeline.Log(p.actor, "[recv] -> SourceHub CheckDocAccess (start, identity=node-self)")
 	peerHasAccess, err := acpDB.CheckDocAccessWithIdentityFunc(
 		ctx,
 		func() immutable.Option[identity.Identity] {
@@ -478,8 +523,12 @@ func (p *P2P) trySelfHasAccess(ctx context.Context, block *coreblock.Block, coll
 		string(block.Delta.GetDocID()),
 	)
 	if err != nil {
+		p.trc.Println("SourceHub check ERROR: %v", err)
+		debug.DefaultTimeline.Log(p.actor, "[recv] <- SourceHub ERROR: %v", err)
 		return false, err
 	}
+	p.trc.Println("SourceHub answer: peerHasAccess=%v", peerHasAccess)
+	debug.DefaultTimeline.Log(p.actor, "[recv] <- SourceHub answer: peerHasAccess=%v", peerHasAccess)
 
 	return peerHasAccess, nil
 }
@@ -517,18 +566,26 @@ func (p *P2P) processPushlogRequest(
 	req *protocol.PushLogRequest,
 	isReplicator bool,
 ) error {
+	defer p.trc.Enter("processPushlogRequest (receiver)")()
+	p.trc.Println("docID=%s collectionID=%s sender=%s isReplicator=%v",
+		req.DocID, req.CollectionID, req.SenderID, isReplicator)
+	debug.DefaultTimeline.Log(p.actor, "[recv] pushlog arrived (isReplicator=%v)", isReplicator)
 	if ctx.Err() != nil {
+		p.trc.Println("ctx already errored: %v", ctx.Err())
 		return ctx.Err()
 	}
 	block, err := coreblock.GetFromBytes(req.Block)
 	if err != nil {
+		p.trc.Println("decode block ERROR: %v", err)
 		return err
 	}
 
 	headCID, err := cid.Cast(req.CID)
 	if err != nil {
+		p.trc.Println("cast CID ERROR: %v", err)
 		return err
 	}
+	p.trc.Println("headCID=%s", headCID.String())
 
 	// Calls to syncDAG should not overlap for a given CID. If they do, they will use the same
 	// underlying pubsub topic and this brings along potential pitfalls. One of them being that
@@ -541,9 +598,11 @@ func (p *P2P) processPushlogRequest(
 	// Check if we've already merged this block. If so, skip the sink process.
 	isMerged, err := p.db.Multistore().Blockstore().IsMerged(ctx, headCID)
 	if err != nil {
+		p.trc.Println("IsMerged ERROR: %v", err)
 		return err
 	}
 	if isMerged {
+		p.trc.Println("block already merged -> skip")
 		return nil
 	}
 
@@ -552,18 +611,28 @@ func (p *P2P) processPushlogRequest(
 	if !isReplicator {
 		mightHaveAccess, err := p.trySelfHasAccess(ctx, block, req.CollectionID)
 		if err != nil {
+			p.trc.Println("trySelfHasAccess ERROR: %v", err)
 			return err
 		}
 		if !mightHaveAccess {
+			p.trc.Println("trySelfHasAccess said NO -> drop (silently)")
+			debug.DefaultTimeline.Log(p.actor, "[recv] gate=NO  (silent drop, no log, no retry)")
 			// If we know we don't have access, we can skip the rest of the processing.
 			return nil
 		}
+		p.trc.Println("trySelfHasAccess said YES -> proceed to syncDAG")
+		debug.DefaultTimeline.Log(p.actor, "[recv] gate=YES -> syncDAG")
+	} else {
+		p.trc.Println("isReplicator=true -> skip trySelfHasAccess")
 	}
 
+	p.trc.Println("entering syncDAG")
 	err = p.syncDAG(ctx, block)
 	if err != nil {
+		p.trc.Println("syncDAG ERROR: %v", err)
 		return err
 	}
+	p.trc.Println("syncDAG OK -> entering Merge")
 
 	mergeEvt := event.Merge{
 		DocID:        req.DocID,
@@ -687,4 +756,12 @@ func (p *P2P) QueryDocIDsWithSETags(
 	}
 
 	return p.seCoordinator.QueryDocIDsByValues(ctx, collectionID, fieldValues)
+}
+
+// shortCID returns a 6-char suffix of a CID string for readable timeline output.
+func shortCID(c string) string {
+	if len(c) <= 6 {
+		return c
+	}
+	return "…" + c[len(c)-6:]
 }

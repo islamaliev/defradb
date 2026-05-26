@@ -21,6 +21,7 @@ import (
 
 	coreblock "github.com/sourcenetwork/defradb/internal/core/block"
 	"github.com/sourcenetwork/defradb/internal/datastore"
+	"github.com/sourcenetwork/defradb/internal/debug"
 	"github.com/sourcenetwork/defradb/internal/encryption"
 )
 
@@ -99,13 +100,22 @@ func (p *P2P) loadBlockLinks(ctx context.Context, linkSys *linking.LinkSystem, b
 			return ctx.Err()
 		}
 
+		p.trc.Println("loadBlockLinks: fetching linked block cid=%s timeout=%s",
+			lnk.String(), p.syncBlockLinkTimeout)
+		debug.DefaultTimeline.Log(p.actor, "[recv] fetch linked block cid=%s (timeout=%s)",
+			shortCID(lnk.String()), p.syncBlockLinkTimeout)
 		ctxWithTimeout, cancel := context.WithTimeout(ctx, p.syncBlockLinkTimeout)
 		nd, err := linkSys.Load(linking.LinkContext{Ctx: ctxWithTimeout}, lnk, coreblock.BlockSchemaPrototype)
 		cancel()
 
 		if err != nil {
+			p.trc.Println("loadBlockLinks: linkSys.Load FAILED cid=%s err=%v", lnk.String(), err)
+			debug.DefaultTimeline.Log(p.actor, "[recv] fetch FAILED cid=%s err=%v",
+				shortCID(lnk.String()), err)
 			return NewErrLoadLinkedBlock(err)
 		}
+		p.trc.Println("loadBlockLinks: linkSys.Load OK cid=%s", lnk.String())
+		debug.DefaultTimeline.Log(p.actor, "[recv] fetch OK cid=%s", shortCID(lnk.String()))
 
 		linkBlock, err := coreblock.GetFromNode(nd)
 		if err != nil {
