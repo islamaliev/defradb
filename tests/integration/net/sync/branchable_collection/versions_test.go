@@ -18,10 +18,13 @@ import (
 
 	"github.com/sourcenetwork/defradb/tests/action"
 	testUtils "github.com/sourcenetwork/defradb/tests/integration"
+	"github.com/sourcenetwork/defradb/tests/multiplier"
 )
 
 func TestBranchableCollectionSync_WithBranchedVersionsAndDocs_ShouldSync(t *testing.T) {
 	test := testUtils.TestCase{
+		// KMS auth needs a collection version that's still in flight; see https://github.com/sourcenetwork/defradb/issues/4789
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			testUtils.RandomNetworkingConfig(),
 			testUtils.RandomNetworkingConfig(),

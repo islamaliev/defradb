@@ -18,6 +18,7 @@ import (
 
 	"github.com/sourcenetwork/defradb/tests/action"
 	testUtils "github.com/sourcenetwork/defradb/tests/integration"
+	"github.com/sourcenetwork/defradb/tests/multiplier"
 )
 
 func TestP2PAddDoesNotSync(t *testing.T) {
@@ -346,6 +347,8 @@ func TestP2PAdd_WithP2PCollectionOnLastNodeInNodeChain_ShouldPropagateUpdate(t *
 
 func TestP2PAdd_WithP2PCollectionAndSubscription_ShouldSucceed(t *testing.T) {
 	test := testUtils.TestCase{
+		// subscription planner can't decrypt; see https://github.com/sourcenetwork/defradb/issues/4787
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			testUtils.RandomNetworkingConfig(),
 			testUtils.RandomNetworkingConfig(),

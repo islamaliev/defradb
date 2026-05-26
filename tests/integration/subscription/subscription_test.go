@@ -216,6 +216,8 @@ func TestSubscriptionWithFilterAndAddMutations(t *testing.T) {
 
 func TestSubscriptionWithUpdateMutations(t *testing.T) {
 	test := testUtils.TestCase{
+		// subscription planner can't decrypt; see https://github.com/sourcenetwork/defradb/issues/4787
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.AddDoc{
 				CollectionID: 0,
@@ -277,6 +279,8 @@ func TestSubscriptionWithUpdateMutations(t *testing.T) {
 
 func TestSubscriptionWithUpdateAllMutations(t *testing.T) {
 	test := testUtils.TestCase{
+		// subscription planner can't decrypt; see https://github.com/sourcenetwork/defradb/issues/4787
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.AddDoc{
 				CollectionID: 0,
@@ -350,6 +354,8 @@ func TestSubscriptionWithUpdateAllMutations(t *testing.T) {
 
 func TestSubscription_WithDocIDFilter_ShouldOnlyGetUpdatesForThatDocID(t *testing.T) {
 	test := testUtils.TestCase{
+		// subscription planner can't decrypt; see https://github.com/sourcenetwork/defradb/issues/4787
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.SubscriptionRequest{
 				Request: `subscription {
@@ -430,7 +436,8 @@ func TestSubscription_WithCounterCRDT_ShouldSucceed(t *testing.T) {
 	test := testUtils.TestCase{
 		// Accumulated CRDT fields (pncounter/pcounter) cannot be indexed.
 		// https://github.com/sourcenetwork/defradb/issues/4439
-		MultiplierExcludes: []string{multiplier.SecondaryIndex},
+		// subscription planner can't decrypt; see https://github.com/sourcenetwork/defradb/issues/4787
+		MultiplierExcludes: []string{multiplier.SecondaryIndex, multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -481,6 +488,8 @@ func TestSubscription_WithCounterCRDT_ShouldSucceed(t *testing.T) {
 
 func TestSubscription_WithDeleteOperation_ShouldSucceed(t *testing.T) {
 	test := testUtils.TestCase{
+		// subscription planner can't decrypt; see https://github.com/sourcenetwork/defradb/issues/4787
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `

@@ -16,10 +16,13 @@ import (
 
 	"github.com/sourcenetwork/defradb/tests/action"
 	testUtils "github.com/sourcenetwork/defradb/tests/integration"
+	"github.com/sourcenetwork/defradb/tests/multiplier"
 )
 
 func TestCommitSubscription_WithAddMutations_ReturnCommits(t *testing.T) {
 	test := testUtils.TestCase{
+		// subscription planner can't decrypt; see https://github.com/sourcenetwork/defradb/issues/4787
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.SubscriptionRequest{
 				Request: `subscription {
