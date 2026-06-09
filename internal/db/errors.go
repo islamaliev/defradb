@@ -125,6 +125,7 @@ const (
 	errNACIsAlreadyEnabled                 string = "node acp is already enabled"
 	errNACIsNotConfigured                  string = "node acp is not configured"
 	errRelationNameEmpty                   string = "relation name cannot be empty"
+	errRelationNameNotUnique               string = "relation name is not unique within collection"
 	errInvalidCID                          string = "invalid CID"
 	errUnknownCID                          string = "unknown CID, collection ids cannot be manually defined"
 	errMigrationBetweenNonAdjacentVersions string = "cannot migrate between non-adjacent collection versions"
@@ -189,6 +190,8 @@ const (
 	errCreateDeleteIndexIterator  string = "failed to create iterator for index deletion"
 	errCreateViewCacheIterator    string = "failed to create view cache iterator"
 	errTxnDiscarded               string = "this transaction has been discarded. Create a new one"
+	errDematerializePopulatedView string = "cannot dematerialize a materialized view that has data," +
+		" first truncate it and then try again."
 )
 
 var (
@@ -247,6 +250,7 @@ var (
 	ErrNACIsNotConfigured                        = errors.New(errNACIsNotConfigured)
 	ErrNACRelationshipOperationRequiresIdentity  = errors.New("node acp relationship operation requires identity")
 	ErrRelationNameEmpty                         = errors.New(errRelationNameEmpty)
+	ErrRelationNameNotUnique                     = errors.New(errRelationNameNotUnique)
 	ErrInvalidCID                                = errors.New(errInvalidCID)
 	ErrUnknownCID                                = errors.New(errUnknownCID)
 	ErrNoP2P                                     = errors.New("no p2p system configured")
@@ -261,6 +265,7 @@ var (
 	ErrEncryptedIndexDoesNotExist                = errors.New(errEncryptedIndexDoesNotExist)
 	ErrReplicatorExists                          = errors.New(errReplicatorExists)
 	ErrTxnDiscarded                              = errors.New(errTxnDiscarded)
+	ErrDematerializePopulatedView                = errors.New(errDematerializePopulatedView)
 )
 
 // NewErrFailedToGetHeads returns a new error indicating that the heads of a document
@@ -428,6 +433,14 @@ func NewErrRelationNameEmpty(name string) error {
 	return errors.New(
 		errRelationNameEmpty,
 		errors.NewKV("Field", name),
+	)
+}
+
+func NewErrRelationNameNotUnique(name string, relationName string) error {
+	return errors.New(
+		errRelationNameNotUnique,
+		errors.NewKV("Field", name),
+		errors.NewKV("RelationName", relationName),
 	)
 }
 
@@ -1146,4 +1159,12 @@ func NewErrDeleteViewCacheItem(inner error) error {
 
 func NewErrParseViewCacheKey(inner error) error {
 	return errors.Wrap(errParseViewCacheKey, inner)
+}
+
+func NewErrDematerializePopulatedView(name string, version string) error {
+	return errors.New(
+		errDematerializePopulatedView,
+		errors.NewKV("Name", name),
+		errors.NewKV("VersionID", version),
+	)
 }
