@@ -23,7 +23,9 @@ import (
 
 func TestBranchableCollectionSync_WithBranchedVersionsAndDocs_ShouldSync(t *testing.T) {
 	test := testUtils.TestCase{
-		// KMS auth needs a collection version that's still in flight; see https://github.com/sourcenetwork/defradb/issues/4789
+		// KMS authorization needs a collection version that is still in
+		// flight during the DAG sync that delivers it. Remove this exclude
+		// when https://github.com/sourcenetwork/defradb/issues/4789 lands.
 		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			testUtils.RandomNetworkingConfig(),

@@ -21,7 +21,9 @@ import (
 
 func TestCommitSubscription_WithAddMutations_ReturnCommits(t *testing.T) {
 	test := testUtils.TestCase{
-		// subscription planner can't decrypt; see https://github.com/sourcenetwork/defradb/issues/4787
+		// Result CIDs are hardcoded because template placeholders are not
+		// resolved inside Request.Results.
+		// See https://github.com/sourcenetwork/defradb/issues/4745.
 		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.SubscriptionRequest{

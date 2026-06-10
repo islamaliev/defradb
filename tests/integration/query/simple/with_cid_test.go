@@ -281,6 +281,8 @@ func TestQuerySimple_ListOfOneCID(t *testing.T) {
 
 func TestQuerySimple_MultipleCIDs(t *testing.T) {
 	test := testUtils.TestCase{
+		// hardcoded CIDs would change under encryption
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -331,6 +333,8 @@ func TestQuerySimple_MultipleCIDs(t *testing.T) {
 
 func TestQuerySimple_DuplicateCIDsForSameDoc(t *testing.T) {
 	test := testUtils.TestCase{
+		// hardcoded CIDs would change under encryption
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -376,6 +380,8 @@ func TestQuerySimple_DuplicateCIDsForSameDoc(t *testing.T) {
 
 func TestQuerySimple_MultipleCIDsForSameDoc(t *testing.T) {
 	test := testUtils.TestCase{
+		// hardcoded CIDs would change under encryption
+		MultiplierExcludes: []string{multiplier.EncryptedDocs},
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `

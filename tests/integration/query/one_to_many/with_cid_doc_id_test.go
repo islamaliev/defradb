@@ -16,14 +16,7 @@ import (
 
 	"github.com/sourcenetwork/defradb/tests/action"
 	testUtils "github.com/sourcenetwork/defradb/tests/integration"
-	"github.com/sourcenetwork/defradb/tests/multiplier"
 )
-
-// encryptedDocsCidQueryExcludes excludes tests that query by `cid:` argument
-// against encrypted documents. The version-fetcher path fails to decrypt the
-// delta before CBOR-decoding it. Bug tracked in
-// https://github.com/sourcenetwork/defradb/issues/4762.
-var encryptedDocsCidQueryExcludes = []string{multiplier.EncryptedDocs}
 
 // This test is for documentation reasons only. This is not
 // desired behaviour (should just return empty).
@@ -73,7 +66,6 @@ var encryptedDocsCidQueryExcludes = []string{multiplier.EncryptedDocs}
 
 func TestQueryOneToManyWithCidAndDocID(t *testing.T) {
 	test := testUtils.TestCase{
-		MultiplierExcludes: encryptedDocsCidQueryExcludes,
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -144,7 +136,6 @@ func TestQueryOneToManyWithCidAndDocID(t *testing.T) {
 // to parent state).
 func TestQueryOneToManyWithChildUpdateAndFirstCidAndDocID(t *testing.T) {
 	test := testUtils.TestCase{
-		MultiplierExcludes: encryptedDocsCidQueryExcludes,
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -219,7 +210,6 @@ func TestQueryOneToManyWithChildUpdateAndFirstCidAndDocID(t *testing.T) {
 
 func TestQueryOneToManyWithParentUpdateAndFirstCidAndDocID(t *testing.T) {
 	test := testUtils.TestCase{
-		MultiplierExcludes: encryptedDocsCidQueryExcludes,
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
@@ -294,7 +284,6 @@ func TestQueryOneToManyWithParentUpdateAndFirstCidAndDocID(t *testing.T) {
 
 func TestQueryOneToManyWithParentUpdateAndLastCidAndDocID(t *testing.T) {
 	test := testUtils.TestCase{
-		MultiplierExcludes: encryptedDocsCidQueryExcludes,
 		Actions: []any{
 			&action.AddCollection{
 				SDL: `
