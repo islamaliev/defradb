@@ -226,3 +226,28 @@ func TestACP_VectorIndexQueryWithMaxCandidatesAndIndexedFilter_ShortResult_Warns
 		})
 	}
 }
+
+// Without a cap, a filter with a secondary index is answered through it when it lists every match
+// first. The result is every visible match, which is short of the limit here because that is all the
+// caller can see, so there is nothing to warn about.
+func TestACP_VectorIndexQueryWithIndexedFilter_FewerVisibleThanLimit_ReportsNoWarning(t *testing.T) {
+	for _, withHidden := range []bool{true, false} {
+		t.Run(map[bool]string{true: "hidden matches", false: "no hidden matches"}[withHidden], func(t *testing.T) {
+			test := testUtils.TestCase{
+				Actions: append(vectorACPIndexedFilterSetup(withHidden),
+					&action.Request{
+						Identity: testUtils.ClientIdentity(2),
+						Request: `query {
+							Users(filter: {category: {_eq: "a"}}, order: {_alias: {sim: DESC}}, limit: 5) {
+								name
+								sim: SIMILARITY(vector: {vector: [1, 0, 0]})
+							}
+						}`,
+						Results: map[string]any{"Users": vectorACPPublicResults},
+					},
+				),
+			}
+			testUtils.ExecuteTestCase(t, test)
+		})
+	}
+}

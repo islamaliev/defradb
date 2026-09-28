@@ -256,6 +256,12 @@ func TestVectorIndex_FilteredSearch_MatchesBruteForceAcrossSelectivities(t *test
 			strategy: "filterIndex",
 		},
 		{
+			name:     "filter combined with and and not",
+			filter:   `{_and: [{n: {_lt: 150}}, {_not: {n: {_lt: 50}}}]}`,
+			passes:   func(d filteredSearchDoc) bool { return d.n < 150 && d.n >= 50 },
+			strategy: "overFetch",
+		},
+		{
 			// The secondary index cannot serve an `_or` across fields: the scan would read the whole
 			// collection with it anyway, so it is not the one to count or answer with.
 			name:     "filter on an indexed and an unindexed field joined by or",
@@ -445,8 +451,8 @@ func TestVectorIndex_FilteredSearch_NonSelectiveIndexedFilter_SearchesVectorInde
 	req := filteredSearchRequest(`{bucket: {_lt: 19}}`, filteredSearchLimit, 0, "")
 
 	// The first batch (twice the limit) is fetched to check the filter, enough of them pass, and the
-	// scan reads only those that passed. The secondary index is opened but never read, because the
-	// vector index finished first.
+	// scan reads only the limit's worth of the nearest that passed. The secondary index is opened but
+	// never read, because the vector index finished first.
 	firstBatch := nearestDocs(metric, docs, 2*filteredSearchLimit)
 	passing := 0
 	for _, doc := range firstBatch {
@@ -468,7 +474,7 @@ func TestVectorIndex_FilteredSearch_NonSelectiveIndexedFilter_SearchesVectorInde
 				Request: makeExplainQuery(req),
 				Asserter: testUtils.NewExplainAsserter().
 					WithVectorStrategy("overFetch").
-					WithDocFetches(len(firstBatch) + passing),
+					WithDocFetches(len(firstBatch) + filteredSearchLimit),
 			},
 		),
 	}
@@ -552,4 +558,35 @@ func TestVectorIndex_FilteredSearchWithMaxCandidates_SecondaryIndexListsAllMatch
 			testUtils.ExecuteTestCase(t, test)
 		})
 	}
+}
+
+// The cap is raised to the limit plus the offset, since the documents the offset skips have to be
+// found too. With a cap of 1 and an offset, the index examines exactly limit+offset documents.
+func TestVectorIndex_FilteredSearchWithMaxCandidatesAndOffset_RaisesItToLimitPlusOffset(t *testing.T) {
+	docs := filteredSearchDocs(200)
+	metric := client.DistanceMetricCosine
+	passes := func(d filteredSearchDoc) bool { return d.n < 100 }
+	const limit, offset = 3, 2
+	examined := nearestDocs(metric, docs, limit+offset)
+	expected := nearestMatches(t, metric, examined, passes, offset, limit)
+	// The case is only meaningful if the offset leaves the page short of the limit.
+	require.Less(t, len(expected), limit, "the capped page must come back short")
+
+	test := testUtils.TestCase{
+		Actions: append(filteredSearchSetup(metric, docs),
+			&action.Request{
+				Request: filteredSearchRequest(`{n: {_lt: 100}}`, limit, offset, ", maxCandidates: 1"),
+				Results: map[string]any{"User": expected},
+				ExpectedWarnings: []client.GQLWarning{{
+					Code: client.WarningCodeVectorCandidateLimitReached,
+					Detail: map[string]any{
+						"field":         "vector",
+						"limit":         limit,
+						"maxCandidates": limit + offset,
+					},
+				}},
+			},
+		),
+	}
+	testUtils.ExecuteTestCase(t, test)
 }

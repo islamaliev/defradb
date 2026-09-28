@@ -304,7 +304,9 @@ func (p *Planner) newInvertableTypeJoin(
 ) (invertibleTypeJoin, error) {
 	prepareScanNodeFilterForTypeJoin(parent, sourcePlan, subSelect)
 
+	p.relatedSelectDepth++
 	subSelectPlan, err := p.Select(subSelect)
+	p.relatedSelectDepth--
 	if err != nil {
 		return invertibleTypeJoin{}, err
 	}

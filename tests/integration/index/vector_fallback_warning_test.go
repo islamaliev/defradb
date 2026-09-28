@@ -14,9 +14,13 @@ package index
 import (
 	"testing"
 
+	"github.com/sourcenetwork/immutable"
+	"github.com/sourcenetwork/lens/host-go/config/model"
+
 	"github.com/sourcenetwork/defradb/client"
 	"github.com/sourcenetwork/defradb/tests/action"
 	testUtils "github.com/sourcenetwork/defradb/tests/integration"
+	"github.com/sourcenetwork/defradb/tests/lenses"
 )
 
 // vectorWarningSetup builds a collection with a cosine vector index and four documents. Every test
@@ -361,6 +365,157 @@ func TestVectorIndexWarning_ShowDeleted_ReportsWarning(t *testing.T) {
 			testUtils.ExecuteTestCase(t, test)
 		})
 	}
+}
+
+// The limit counts groups, but the nearest documents can all fall in one group: here the three nearest
+// all have age 10. Narrowing to them would return one group where two are asked for.
+func TestVectorIndexWarning_GroupBy_ReportsWarning(t *testing.T) {
+	test := testUtils.TestCase{
+		Actions: append(vectorWarningSetup(),
+			&action.AddDoc{DocMap: map[string]any{"name": "x2", "age": 10, "vector": []float32{0.95, 0.1, 0}}},
+			&action.AddDoc{DocMap: map[string]any{"name": "x3", "age": 10, "vector": []float32{0.97, 0.05, 0}}},
+			&action.Request{
+				Request: `query {
+					User(groupBy: [age], filter: {age: {_gt: 5}}, order: {_alias: {sim: DESC}}, limit: 2) {
+						age
+						sim: SIMILARITY(vector: {vector: [1, 0, 0]})
+						GROUP { name }
+					}
+				}`,
+				Results: map[string]any{
+					"User": []map[string]any{
+						{
+							"age":   int64(10),
+							"sim":   testUtils.CosineSimilarity([]float64{0.97, 0.05, 0}, []float64{1, 0, 0}),
+							"GROUP": []map[string]any{{"name": "x"}, {"name": "x2"}, {"name": "x3"}},
+						},
+						{
+							"age":   int64(30),
+							"sim":   testUtils.CosineSimilarity([]float64{0.9, 0.4, 0}, []float64{1, 0, 0}),
+							"GROUP": []map[string]any{{"name": "xy"}},
+						},
+					},
+				},
+				ExpectedWarnings: unusedIndexWarning("groupBy"),
+			},
+		),
+	}
+
+	testUtils.ExecuteTestCase(t, test)
+}
+
+// A relation's documents are narrowed to each parent's only when the join runs, so the collection's
+// nearest documents are not the ones asked for: here they all belong to team "a", and team "b" would
+// get none. With and without a filter, each team must get its own nearest.
+func TestVectorIndexWarning_NestedSelect_ReportsWarning(t *testing.T) {
+	for _, filter := range []string{"", "filter: {age: {_gt: 15}}, "} {
+		t.Run(map[bool]string{true: "without filter", false: "with filter"}[filter == ""], func(t *testing.T) {
+			test := testUtils.TestCase{
+				Actions: []any{
+					&action.AddCollection{
+						SDL: `
+							type Team {
+								name: String
+								users: [User]
+							}
+
+							type User {
+								name: String
+								age: Int
+								team: Team
+								vector: [Float32!] @index(vector: {dimensions: 3, hnsw: {metric: COSINE}})
+							}
+						`,
+					},
+					&action.AddDoc{CollectionID: 0, DocMap: map[string]any{"name": "a"}},
+					&action.AddDoc{CollectionID: 0, DocMap: map[string]any{"name": "b"}},
+					&action.AddDoc{CollectionID: 1, DocMap: map[string]any{
+						"name": "a1", "age": 20, "team": testUtils.NewDocIndex(0, 0), "vector": []float32{1, 0, 0},
+					}},
+					&action.AddDoc{CollectionID: 1, DocMap: map[string]any{
+						"name": "a2", "age": 20, "team": testUtils.NewDocIndex(0, 0), "vector": []float32{0.9, 0.1, 0},
+					}},
+					&action.AddDoc{CollectionID: 1, DocMap: map[string]any{
+						"name": "b1", "age": 20, "team": testUtils.NewDocIndex(0, 1), "vector": []float32{0, 1, 0},
+					}},
+					&action.Request{
+						Request: `query {
+							Team(order: {name: ASC}) {
+								name
+								users(` + filter + `order: {_alias: {sim: DESC}}, limit: 1) {
+									name
+									sim: SIMILARITY(vector: {vector: [1, 0, 0]})
+								}
+							}
+						}`,
+						Results: map[string]any{
+							"Team": []map[string]any{
+								{
+									"name": "a",
+									"users": []map[string]any{
+										{"name": "a1", "sim": testUtils.CosineSimilarity([]float64{1, 0, 0}, []float64{1, 0, 0})},
+									},
+								},
+								{
+									"name": "b",
+									"users": []map[string]any{
+										{"name": "b1", "sim": testUtils.CosineSimilarity([]float64{0, 1, 0}, []float64{1, 0, 0})},
+									},
+								},
+							},
+						},
+						ExpectedWarnings: unusedIndexWarning("nestedSelect"),
+					},
+				},
+			}
+			testUtils.ExecuteTestCase(t, test)
+		})
+	}
+}
+
+// With lens migrations the filter is applied again to the migrated documents, so the scan's check on
+// the stored ones cannot decide the result. The migration adds 100 to age: stored, every age passes
+// age < 115, but migrated only "x" (110) does. Deciding at the scan would stop at "z" and "y", the
+// nearest, and return nothing once the migrated filter dropped them.
+func TestVectorIndexWarning_FilterOnMigratedCollection_ReportsWarning(t *testing.T) {
+	test := testUtils.TestCase{
+		Actions: append(vectorWarningSetup(),
+			&action.PatchCollection{
+				Patch: `
+					[
+						{ "op": "add", "path": "/User/Fields/-", "value": {"Name": "email", "Kind": "String"} }
+					]
+				`,
+				Lens: immutable.Some(model.Lens{
+					Lenses: []model.LensModule{
+						{
+							Path: lenses.IncrementModulePath,
+							Arguments: map[string]any{
+								"field": "age",
+								"value": 100,
+							},
+						},
+					},
+				}),
+			},
+			&action.Request{
+				Request: `query {
+					User(filter: {age: {_lt: 115}}, order: {_alias: {sim: DESC}}, limit: 1){
+						name
+						sim: SIMILARITY(vector: {vector: [0, 0.3, 1]})
+					}
+				}`,
+				Results: map[string]any{
+					"User": []map[string]any{
+						{"name": "x", "sim": testUtils.CosineSimilarity([]float64{1, 0, 0}, []float64{0, 0.3, 1})},
+					},
+				},
+				ExpectedWarnings: unusedIndexWarning("filter"),
+			},
+		),
+	}
+
+	testUtils.ExecuteTestCase(t, test)
 }
 
 // With two similarity fields, which one drives the search is ambiguous, so the query full-scans.

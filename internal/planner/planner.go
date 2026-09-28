@@ -107,6 +107,11 @@ type Planner struct {
 	ctx       context.Context
 	lensStore lensStore.Store
 
+	// relatedSelectDepth is above zero while a relation's child select is being planned. A nearest-
+	// neighbour search there must not be narrowed to the collection's nearest documents: the join
+	// restricts the child to each parent's related documents only when it runs.
+	relatedSelectDepth int
+
 	// joinExpand holds transient state used only during plan expansion for
 	// join optimization and orphan wiring. These fields are set at the start of
 	// plan expansion and consumed during the recursive expandPlan walk.

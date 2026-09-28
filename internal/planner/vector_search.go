@@ -11,6 +11,9 @@
 package planner
 
 import (
+	"cmp"
+	"slices"
+
 	"github.com/sourcenetwork/immutable"
 
 	"github.com/sourcenetwork/defradb/client"
@@ -39,6 +42,11 @@ const (
 	// The index holds only documents that are not deleted, so it cannot find the deleted ones the
 	// query asks for too.
 	reasonShowDeleted = "showDeleted"
+	// The query selects a relation's documents, which the join narrows to each parent's only when it
+	// runs, so the collection's nearest documents are not the ones asked for.
+	reasonNestedSelect = "nestedSelect"
+	// The limit counts groups, not documents, so the nearest documents may fill fewer of them.
+	reasonGroupBy = "groupBy"
 	// Lifting this is https://github.com/sourcenetwork/defradb/issues/5072
 	reasonMultipleSimilarityFields = "multipleSimilarityFields"
 )
@@ -52,7 +60,8 @@ const (
 	// filter (or, with maxCandidates, until the cap was reached).
 	vectorStrategyOverFetch = "overFetch"
 	// A secondary index resolved the filter and every matching document was scored exactly. The
-	// vector index was not searched.
+	// vector index may have been searched first, until the secondary index proved the cheaper way or
+	// the search reached its budget.
 	vectorStrategyFilterIndex = "filterIndex"
 )
 
@@ -157,6 +166,14 @@ func (n *selectNode) tryRouteSimilarityToVectorIndex(origScan *scanNode) error {
 		return nil
 	}
 
+	if n.planner.relatedSelectDepth > 0 {
+		n.warnVectorIndexUnused(sim, reasonNestedSelect)
+		return nil
+	}
+	if n.selectReq.GroupBy != nil {
+		n.warnVectorIndexUnused(sim, reasonGroupBy)
+		return nil
+	}
 	if n.selectReq.ShowDeleted {
 		n.warnVectorIndexUnused(sim, reasonShowDeleted)
 		return nil
@@ -244,7 +261,7 @@ func (n *selectNode) tryRouteSimilarityToVectorIndex(origScan *scanNode) error {
 	origScan.vectorSearches = found.searches
 
 	if len(found.passing) >= k {
-		n.useVectorPrefixes(origScan, vectorStrategyOverFetch, prefixesOf(found.passing), found.searches)
+		n.useVectorPrefixes(origScan, vectorStrategyOverFetch, prefixesOf(nearest(found.passing, k)), found.searches)
 		return nil
 	}
 	if probe != nil && probe.done {
@@ -647,6 +664,8 @@ func (n *selectNode) vectorSearch(
 type vectorDoc struct {
 	docID  string
 	prefix keys.Walkable
+	// distance is the document's distance to the query under the index's metric (smaller is nearer).
+	distance float64
 }
 
 // docPrefixes returns the prefix of each search result, in the same order. A result whose document no
@@ -672,9 +691,25 @@ func (n *selectNode) docPrefixes(results []vectorindex.SearchResult) ([]vectorDo
 				CollectionShortID: collectionShortID,
 				DocShortID:        docShortID,
 			},
+			distance: r.Distance,
 		})
 	}
 	return docs, nil
+}
+
+// nearest returns the k nearest of docs. The last round can pass up to twice as many as the result
+// needs, and only the nearest k can be in it, so the scan need not read the others again. Distances
+// come from each document's stored vector under the index's metric, so they rank the documents the
+// same way the query's scores do.
+func nearest(docs []vectorDoc, k int) []vectorDoc {
+	if len(docs) <= k {
+		return docs
+	}
+	sorted := slices.Clone(docs)
+	slices.SortStableFunc(sorted, func(a, b vectorDoc) int {
+		return cmp.Compare(a.distance, b.distance)
+	})
+	return sorted[:k]
 }
 
 // prefixesOf returns the prefixes of docs, in the same order.
