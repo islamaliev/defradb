@@ -272,10 +272,6 @@ func CanBeOrderedByIndex(
 	return orderMismatchCount == 0 || allMismatches, allMismatches
 }
 
-// hasOrWithMultipleFields checks if the filter conditions have an _or operator at the root level
-// where branches reference fields not covered by this index.
-// This check MUST happen here before filter.CopyField strips out non-indexed fields,
-// otherwise the orIndexIterator would only see partial OR branches and return incomplete results.
 // CanIndexServeFilter reports whether the index fetcher can read the documents docFilter matches
 // through indexDesc. When it cannot, the fetcher reads the whole collection instead.
 func CanIndexServeFilter(
@@ -286,6 +282,10 @@ func CanIndexServeFilter(
 	return docFilter == nil || !hasOrWithMultipleFields(docFilter.Conditions, indexDesc, docMapper)
 }
 
+// hasOrWithMultipleFields checks if the filter conditions have an _or operator at the root level
+// where branches reference fields not covered by this index.
+// This check MUST happen here before filter.CopyField strips out non-indexed fields,
+// otherwise the orIndexIterator would only see partial OR branches and return incomplete results.
 func hasOrWithMultipleFields(
 	conditions map[connor.FilterKey]any,
 	indexDesc client.IndexDescription,

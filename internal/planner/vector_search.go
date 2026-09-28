@@ -36,6 +36,9 @@ const (
 	// examine, so the whole collection was read to find the rest.
 	reasonFilterTooSelective         = "filterTooSelective"
 	reasonNotOrderedBySimilarityDesc = "notOrderedBySimilarityDesc"
+	// The index holds only documents that are not deleted, so it cannot find the deleted ones the
+	// query asks for too.
+	reasonShowDeleted = "showDeleted"
 	// Lifting this is https://github.com/sourcenetwork/defradb/issues/5072
 	reasonMultipleSimilarityFields = "multipleSimilarityFields"
 )
@@ -154,6 +157,10 @@ func (n *selectNode) tryRouteSimilarityToVectorIndex(origScan *scanNode) error {
 		return nil
 	}
 
+	if n.selectReq.ShowDeleted {
+		n.warnVectorIndexUnused(sim, reasonShowDeleted)
+		return nil
+	}
 	if n.selectReq.Limit == nil || n.selectReq.Limit.Limit <= 0 {
 		n.warnVectorIndexUnused(sim, reasonNoLimit)
 		return nil
@@ -233,6 +240,9 @@ func (n *selectNode) tryRouteSimilarityToVectorIndex(origScan *scanNode) error {
 		return err
 	}
 
+	// Counted in explain whichever way the query is answered, since they ran either way.
+	origScan.vectorSearches = found.searches
+
 	if len(found.passing) >= k {
 		n.useVectorPrefixes(origScan, vectorStrategyOverFetch, prefixesOf(found.passing), found.searches)
 		return nil
@@ -241,6 +251,13 @@ func (n *selectNode) tryRouteSimilarityToVectorIndex(origScan *scanNode) error {
 		// Every match was read in no more reads than the search had spent, so scoring them all is the
 		// cheaper way, and it is exact. selectIndex picks this same index for the scan below.
 		origScan.vectorStrategy = vectorStrategyFilterIndex
+		// The result is every match, so short of k it is the true answer and needs no warning. But
+		// with access control, whether this point is reached rather than the one below depends on
+		// documents the caller cannot see, so, as below, a capped query warns whenever it is short.
+		// The probe read only matches the caller can see, which is what they get back.
+		if maxCandidates > 0 && n.hidesDocuments() && probe.read < k {
+			n.warnCandidateLimitReached(sim, maxCandidates)
+		}
 		return nil
 	}
 
@@ -368,6 +385,8 @@ func (n *selectNode) filterIndex(origScan *scanNode) immutable.Option[client.Ind
 type filterIndexProbe struct {
 	origScan *scanNode
 	scan     *scanNode
+	// read is how many matches have been read.
+	read int
 	// done is set once every match has been read.
 	done bool
 }
@@ -396,6 +415,7 @@ func (p *filterIndexProbe) advance(count int) error {
 			p.done = true
 			return nil
 		}
+		p.read++
 	}
 	return nil
 }
@@ -422,7 +442,10 @@ type overFetchResult struct {
 // once the probe has read them all.
 //
 // Each batch holds the batch-size nearest documents, so once k of them pass, no document outside it
-// can be nearer than those k. The answer is then the same one reading the whole collection gives.
+// can be nearer than those k. The answer is then the one reading the whole collection gives, as far as
+// the graph search is exact: like an unfiltered search, it finds the nearest documents approximately,
+// and less reliably toward the end of a large batch, which is where a selective filter's matches are.
+// How approximate is set by the index's efSearch.
 func (n *selectNode) overFetch(
 	origScan *scanNode,
 	target string,

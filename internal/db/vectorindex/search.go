@@ -39,7 +39,8 @@ type SearchResult struct {
 //
 // exhausted reports that the index returned fewer than k hits, so a larger k would find nothing
 // more. It is judged on the index's own hits, before dangling ids are skipped, so a skipped id does
-// not make the index look smaller than it is.
+// not make the index look smaller than it is. Like the search itself it is approximate: a graph that
+// cannot reach some of its documents from the entry point reports them missing too.
 func Search(
 	ctx context.Context,
 	collectionShortID, indexID, epoch uint32,

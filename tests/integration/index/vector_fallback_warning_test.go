@@ -215,8 +215,10 @@ func TestVectorIndexWarning_FilterPassesFewerThanLimit_ReportsWarning(t *testing
 				ExpectedWarnings: unusedIndexWarning("filterTooSelective"),
 			},
 			&action.Request{
-				Request:          makeExplainQuery(req),
-				Asserter:         testUtils.NewExplainAsserter().WithVectorStrategy(""),
+				Request: makeExplainQuery(req),
+				// The index was still searched before giving up: first for twice the limit, then for
+				// more, when it turned out to hold all four documents.
+				Asserter:         testUtils.NewExplainAsserter().WithVectorStrategy("").WithIndexFetches(2),
 				ExpectedWarnings: unusedIndexWarning("filterTooSelective"),
 			},
 		),
@@ -330,6 +332,35 @@ func TestVectorIndexWarning_FilterOnRelatedDocument_ReportsWarning(t *testing.T)
 	}
 
 	testUtils.ExecuteTestCase(t, test)
+}
+
+// A deleted document is removed from the index, so the index cannot find the deleted documents
+// showDeleted asks for, and the whole collection is read. Here the deleted "x" is the nearest match.
+func TestVectorIndexWarning_ShowDeleted_ReportsWarning(t *testing.T) {
+	for _, filter := range []string{"", "filter: {age: {_lt: 35}}, "} {
+		t.Run(map[bool]string{true: "without filter", false: "with filter"}[filter == ""], func(t *testing.T) {
+			test := testUtils.TestCase{
+				Actions: append(vectorWarningSetup(),
+					testUtils.DeleteDoc{DocID: 0},
+					&action.Request{
+						Request: `query {
+							User(` + filter + `showDeleted: true, order: {_alias: {sim: DESC}}, limit: 1){
+								name
+								sim: SIMILARITY(vector: {vector: [1, 0, 0]})
+							}
+						}`,
+						Results: map[string]any{
+							"User": []map[string]any{
+								{"name": "x", "sim": testUtils.CosineSimilarity([]float64{1, 0, 0}, []float64{1, 0, 0})},
+							},
+						},
+						ExpectedWarnings: unusedIndexWarning("showDeleted"),
+					},
+				),
+			}
+			testUtils.ExecuteTestCase(t, test)
+		})
+	}
 }
 
 // With two similarity fields, which one drives the search is ambiguous, so the query full-scans.

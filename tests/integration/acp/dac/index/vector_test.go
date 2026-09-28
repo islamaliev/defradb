@@ -154,3 +154,75 @@ func TestACP_VectorIndexQuery_OwnerSeesNearest(t *testing.T) {
 
 	testUtils.ExecuteTestCase(t, test)
 }
+
+// vectorACPIndexedFilterSetup is like vectorACPSetup with a filter field that has a secondary index,
+// and optionally two documents only identity 1 can read that match the filter too.
+func vectorACPIndexedFilterSetup(withHidden bool) []any {
+	actions := []any{
+		testUtils.AddDACPolicy{
+			Identity: testUtils.ClientIdentity(1),
+			Policy:   userPolicy,
+		},
+		&action.AddCollection{
+			SDL: `
+				type Users @policy(
+					id: "{{.Policy0}}",
+					resource: "users"
+				) {
+					name: String
+					category: String @index
+					vector: [Float32!] @index(vector: {dimensions: 3, hnsw: {metric: COSINE}})
+				}
+			`,
+		},
+	}
+	if withHidden {
+		actions = append(actions,
+			&action.AddDoc{
+				Identity: testUtils.ClientIdentity(1),
+				DocMap:   map[string]any{"name": "private1", "category": "a", "vector": []float32{1, 0, 0}},
+			},
+			&action.AddDoc{
+				Identity: testUtils.ClientIdentity(1),
+				DocMap:   map[string]any{"name": "private2", "category": "a", "vector": []float32{0.9, 0.1, 0}},
+			},
+		)
+	}
+	return append(actions,
+		&action.AddDoc{DocMap: map[string]any{"name": "public1", "category": "a", "vector": []float32{0.5, 0.5, 0}}},
+		&action.AddDoc{DocMap: map[string]any{"name": "public2", "category": "a", "vector": []float32{0, 1, 0}}},
+	)
+}
+
+// Whether the filter's secondary index lists its matches before the capped search stops depends on
+// how many documents the search sees, hidden ones included. So the short result must warn either way:
+// if it warned only without the hidden documents, the warning would tell the caller they exist.
+func TestACP_VectorIndexQueryWithMaxCandidatesAndIndexedFilter_ShortResult_WarnsWhetherOrNotHiddenMatchesExist(t *testing.T) {
+	for _, withHidden := range []bool{true, false} {
+		t.Run(map[bool]string{true: "hidden matches", false: "no hidden matches"}[withHidden], func(t *testing.T) {
+			test := testUtils.TestCase{
+				Actions: append(vectorACPIndexedFilterSetup(withHidden),
+					&action.Request{
+						Identity: testUtils.ClientIdentity(2),
+						Request: `query {
+							Users(filter: {category: {_eq: "a"}}, order: {_alias: {sim: DESC}}, limit: 5) {
+								name
+								sim: SIMILARITY(vector: {vector: [1, 0, 0], maxCandidates: 100})
+							}
+						}`,
+						Results: map[string]any{"Users": vectorACPPublicResults},
+						ExpectedWarnings: []client.GQLWarning{{
+							Code: client.WarningCodeVectorCandidateLimitReached,
+							Detail: map[string]any{
+								"field":         "vector",
+								"limit":         5,
+								"maxCandidates": 100,
+							},
+						}},
+					},
+				),
+			}
+			testUtils.ExecuteTestCase(t, test)
+		})
+	}
+}
