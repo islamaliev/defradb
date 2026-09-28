@@ -476,6 +476,20 @@ const (
 	// the collection grows. The `reason` detail says which part of the query shape ruled the index
 	// out.
 	WarningCodeVectorIndexUnused = "VECTOR_INDEX_UNUSED"
+
+	// WarningCodeVectorCandidateLimitReached means a filtered nearest-neighbour query returned fewer
+	// documents than its limit because the vector index stopped at the `maxCandidates` the query set,
+	// so more matching documents may exist. It is the opposite of [WarningCodeVectorIndexUnused]: the
+	// index was used, and the result may be incomplete. Raise `maxCandidates`, leave it out, or narrow
+	// the filter to get the rest.
+	//
+	// The `field`, `limit` and `maxCandidates` details repeat the query's own values (`maxCandidates`
+	// after it is raised to the limit plus offset), never anything about the documents examined.
+	//
+	// On a collection with document access control, it is reported whenever such a query comes back
+	// short, including when no more matching documents exist: telling the two apart would reveal how
+	// many documents the index holds, including ones the caller cannot see.
+	WarningCodeVectorCandidateLimitReached = "VECTOR_CANDIDATE_LIMIT_REACHED"
 )
 
 // gqlError represents an error that was encountered during a GQL request.

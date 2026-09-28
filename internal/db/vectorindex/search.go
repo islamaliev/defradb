@@ -36,35 +36,39 @@ type SearchResult struct {
 //
 // A hit whose short id no longer maps to a document is skipped: the document can be deleted in this
 // same transaction after the graph was read, and a dangling id must not reach the caller.
+//
+// exhausted reports that the index returned fewer than k hits, so a larger k would find nothing
+// more. It is judged on the index's own hits, before dangling ids are skipped, so a skipped id does
+// not make the index look smaller than it is.
 func Search(
 	ctx context.Context,
 	collectionShortID, indexID, epoch uint32,
 	desc client.VectorIndexDescription,
 	query []float32,
 	k int,
-) ([]SearchResult, error) {
+) (results []SearchResult, exhausted bool, err error) {
 	index, err := Open(ctx, collectionShortID, indexID, epoch, desc)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	hits, err := index.Search(query, k)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	results := make([]SearchResult, 0, len(hits))
+	results = make([]SearchResult, 0, len(hits))
 	for _, hit := range hits {
 		docID, found, err := id.GetDocID(ctx, hit.NodeID)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if !found {
 			continue
 		}
 		results = append(results, SearchResult{DocID: docID, Distance: hit.Distance})
 	}
-	return results, nil
+	return results, len(hits) < k, nil
 }
 
 // Hit is one search hit: the indexed node id (a document short id) and its distance to the query

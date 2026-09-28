@@ -61,12 +61,15 @@ type scanNode struct {
 	index   immutable.Option[client.IndexDescription]
 	fetcher fetcher.Fetcher
 
-	// vectorIndexed is set when the scan's prefixes come from a vector-index search rather than a
-	// filter or full scan. It only affects explain output: the search is reported as one index fetch,
-	// the same way a scalar index fetch is counted, so a routed nearest-neighbour query is visible.
-	// The single-fetch count is a simplification; granular per-node-read counting is tracked in
-	// https://github.com/sourcenetwork/defradb/issues/5080
-	vectorIndexed bool
+	// vectorStrategy names how a nearest-neighbour query was answered (one of the vectorStrategy
+	// constants), or is empty when it was not. It is reported by execute explain.
+	vectorStrategy string
+
+	// vectorSearches is how many times the vector index's graph was searched. Execute explain counts
+	// each search as one index fetch, the same way a scalar index fetch is counted, so a routed
+	// nearest-neighbour query is visible. It does not reflect the searches' real node reads;
+	// granular counting is tracked in https://github.com/sourcenetwork/defradb/issues/5080
+	vectorSearches int
 
 	execInfo scanExecInfo
 }
@@ -500,6 +503,11 @@ func (n *scanNode) Prefixes(prefixes []keys.Walkable) {
 	n.noResults = false
 }
 
+// hasVectorPrefixes reports whether the scan reads only documents the vector index found.
+func (n *scanNode) hasVectorPrefixes() bool {
+	return n.vectorStrategy == vectorStrategyGraph || n.vectorStrategy == vectorStrategyOverFetch
+}
+
 func (n *scanNode) Close() error {
 	return n.fetcher.Close()
 }
@@ -536,20 +544,17 @@ func (n *scanNode) simpleExplain() (map[string]any, error) {
 }
 
 func (n *scanNode) executeExplain() map[string]any {
-	indexFetches := n.execInfo.fetches.IndexesFetched
-	if n.vectorIndexed {
-		// Reported as a single index fetch: enough to show the query routed to the vector index, but
-		// unlike a scalar index (which counts each entry read) it does not reflect the graph search's
-		// real node reads. Granular counting is tracked in
-		// https://github.com/sourcenetwork/defradb/issues/5080
-		indexFetches++
-	}
-	return map[string]any{
+	explain := map[string]any{
 		"iterations":   n.execInfo.iterations,
 		"docFetches":   n.execInfo.fetches.DocsFetched,
 		"fieldFetches": n.execInfo.fetches.FieldsFetched,
-		"indexFetches": indexFetches,
+		"indexFetches": n.execInfo.fetches.IndexesFetched + uint64(n.vectorSearches),
 	}
+	// Only a nearest-neighbour query reports it, so other queries' explain output is unchanged.
+	if n.vectorStrategy != "" {
+		explain[vectorStrategyLabel] = n.vectorStrategy
+	}
+	return explain
 }
 
 // Explain method returns a map containing all attributes of this node that

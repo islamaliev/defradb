@@ -400,7 +400,10 @@ func (n *selectNode) initSource() ([]aggregateNode, []*similarityNode, error) {
 		// The VersionedFetcher (used when CIDs are present) operates on a temporary
 		// in-memory store that doesn't contain index data, so secondary index
 		// selection must be skipped for CID-based queries.
-		if !n.selectReq.Cids.HasValue() {
+		//
+		// A scan narrowed to documents the vector index found must not get one either: the index
+		// fetcher ignores prefixes, so it would read every document the filter matches instead.
+		if !n.selectReq.Cids.HasValue() && !origScan.hasVectorPrefixes() {
 			result := selectIndex(selectIndexOptions{
 				collection: origScan.col,
 				filter:     origScan.filter,

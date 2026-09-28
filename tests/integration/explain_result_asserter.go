@@ -28,6 +28,8 @@ const (
 	fieldFetchesProp = "fieldFetches"
 	indexFetchesProp = "indexFetches"
 
+	vectorStrategyProp = "vectorStrategy"
+
 	explainProp          = "explain"
 	executionSuccessProp = "executionSuccess"
 	sizeOfResultProp     = "sizeOfResult"
@@ -66,6 +68,7 @@ type ExplainAsserter struct {
 	filterMatches  immutable.Option[int]
 	sizeOfResults  immutable.Option[int]
 	planExecutions immutable.Option[uint64]
+	vectorStrategy immutable.Option[string]
 	nextLevel      *ExplainAsserter
 }
 
@@ -107,6 +110,13 @@ func (a *ExplainAsserter) WithFieldFetches(fieldFetches int) *ExplainAsserter {
 
 func (a *ExplainAsserter) WithIndexFetches(indexFetches int) *ExplainAsserter {
 	a.indexFetches = immutable.Some(indexFetches)
+	return a
+}
+
+// WithVectorStrategy asserts how a nearest-neighbour query was answered: "graph", "overFetch" or
+// "filterIndex". An empty string asserts that no vector strategy ran.
+func (a *ExplainAsserter) WithVectorStrategy(strategy string) *ExplainAsserter {
+	a.vectorStrategy = immutable.Some(strategy)
 	return a
 }
 
@@ -179,6 +189,15 @@ func (a *ExplainAsserter) Assert(t testing.TB, result map[string]any) {
 	a.assertMetrics(t, func(prop string) uint64 {
 		return getMetric(metricsNode, prop)
 	}, a.path)
+
+	if a.vectorStrategy.HasValue() {
+		actual, has := metricsNode[vectorStrategyProp]
+		if a.vectorStrategy.Value() == "" {
+			assert.False(t, has, "Expected no vectorStrategy, got %v", actual)
+		} else {
+			assert.Equal(t, a.vectorStrategy.Value(), actual, "Unexpected vectorStrategy")
+		}
+	}
 
 	if a.nextLevel != nil {
 		a.nextLevel.assertLevelOnly(t, selectNode)

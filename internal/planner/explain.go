@@ -78,6 +78,7 @@ const (
 	offsetLabel         = "offset"
 	sourcesLabel        = "sources"
 	prefixesLabel       = "prefixes"
+	vectorStrategyLabel = "vectorStrategy"
 )
 
 // buildDebugExplainGraph dumps the entire plan graph as is, with all the plan nodes.

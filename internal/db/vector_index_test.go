@@ -72,7 +72,7 @@ func vectorIndexSearch(
 	epoch, err := getIndexEpoch(readCtx, col.Version().CollectionID, desc.ID)
 	require.NoError(t, err)
 
-	results, err := vectorindex.Search(readCtx, collectionShortID, desc.ID, epoch, *vectorDesc, query, k)
+	results, _, err := vectorindex.Search(readCtx, collectionShortID, desc.ID, epoch, *vectorDesc, query, k)
 	require.NoError(t, err)
 
 	docIDs := make([]string, len(results))

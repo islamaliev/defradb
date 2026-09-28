@@ -256,6 +256,13 @@ func SimilarityScore(metric client.DistanceMetric, source, vector []float64) *si
 	return &similarityScore{source: source, vector: vector, metric: metric}
 }
 
+// ExpectedSimilarity returns the score `_similarity` should give the two vectors under the metric,
+// computed the same independent way the matchers above check it. Use it to rank documents in a test's
+// own brute-force baseline.
+func ExpectedSimilarity(metric client.DistanceMetric, source, vector []float64) float64 {
+	return SimilarityScore(metric, source, vector).expected()
+}
+
 type similarityScore struct {
 	source []float64
 	vector []float64

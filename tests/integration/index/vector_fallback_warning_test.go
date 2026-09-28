@@ -132,21 +132,144 @@ func TestVectorIndexWarning_NoLimit_ReportsWarning(t *testing.T) {
 	testUtils.ExecuteTestCase(t, test)
 }
 
-// Lifting this is https://github.com/sourcenetwork/defradb/issues/5071
-func TestVectorIndexWarning_WithFilter_ReportsWarning(t *testing.T) {
+// A filter used to rule the index out (https://github.com/sourcenetwork/defradb/issues/5071). The
+// query now searches the index for more candidates than the limit until enough pass, so it no longer
+// reads the whole collection and no longer warns.
+func TestVectorIndexWarning_WithFilter_UsesIndexAndReportsNoWarning(t *testing.T) {
+	req := `query {
+		User(filter: {age: {_gt: 15}}, order: {_alias: {sim: DESC}}, limit: 2){
+			name
+			sim: SIMILARITY(vector: {vector: [1, 0, 0]})
+		}
+	}`
+	test := testUtils.TestCase{
+		Actions: append(vectorWarningSetup(),
+			&action.Request{
+				Request: req,
+				Results: map[string]any{
+					"User": []map[string]any{
+						{"name": "xy", "sim": testUtils.CosineSimilarity([]float64{0.9, 0.4, 0}, []float64{1, 0, 0})},
+						{"name": "y", "sim": testUtils.CosineSimilarity([]float64{0, 1, 0}, []float64{1, 0, 0})},
+					},
+				},
+			},
+			&action.Request{
+				Request:  makeExplainQuery(req),
+				Asserter: testUtils.NewExplainAsserter().WithVectorStrategy("overFetch"),
+			},
+		),
+	}
+
+	testUtils.ExecuteTestCase(t, test)
+}
+
+// Filtering the k nearest after the fact can reject all of them and return nothing while matching
+// documents exist. Only "z" matches age > 35 and it is the farthest from the query, so asking the
+// graph for k=1 would find "x", drop it, and return an empty result. The index is searched further
+// until "z" is found instead.
+func TestVectorIndexWarning_SelectiveFilter_StillReturnsMatchingDocs(t *testing.T) {
+	req := `query {
+		User(filter: {age: {_gt: 35}}, order: {_alias: {sim: DESC}}, limit: 1){
+			name
+			sim: SIMILARITY(vector: {vector: [1, 0, 0]})
+		}
+	}`
+	test := testUtils.TestCase{
+		Actions: append(vectorWarningSetup(),
+			&action.Request{
+				Request: req,
+				Results: map[string]any{
+					"User": []map[string]any{
+						{"name": "z", "sim": testUtils.CosineSimilarity([]float64{0, 0, 1}, []float64{1, 0, 0})},
+					},
+				},
+			},
+			&action.Request{
+				Request:  makeExplainQuery(req),
+				Asserter: testUtils.NewExplainAsserter().WithVectorStrategy("overFetch"),
+			},
+		),
+	}
+
+	testUtils.ExecuteTestCase(t, test)
+}
+
+// Fewer documents match than the limit, so the index alone cannot say there are no others: the whole
+// collection is read, and the query says why.
+func TestVectorIndexWarning_FilterPassesFewerThanLimit_ReportsWarning(t *testing.T) {
+	req := `query {
+		User(filter: {age: {_gt: 35}}, order: {_alias: {sim: DESC}}, limit: 2){
+			name
+			sim: SIMILARITY(vector: {vector: [1, 0, 0]})
+		}
+	}`
+	test := testUtils.TestCase{
+		Actions: append(vectorWarningSetup(),
+			&action.Request{
+				Request: req,
+				Results: map[string]any{
+					"User": []map[string]any{
+						{"name": "z", "sim": testUtils.CosineSimilarity([]float64{0, 0, 1}, []float64{1, 0, 0})},
+					},
+				},
+				ExpectedWarnings: unusedIndexWarning("filterTooSelective"),
+			},
+			&action.Request{
+				Request:          makeExplainQuery(req),
+				Asserter:         testUtils.NewExplainAsserter().WithVectorStrategy(""),
+				ExpectedWarnings: unusedIndexWarning("filterTooSelective"),
+			},
+		),
+	}
+
+	testUtils.ExecuteTestCase(t, test)
+}
+
+// A document without a vector is never in the index, but it still matches the filter, so reading the
+// whole collection is what finds it. Returning only what the index holds would leave it out.
+func TestVectorIndexWarning_FilterPassesFewerThanLimit_ReturnsDocWithoutVector(t *testing.T) {
+	test := testUtils.TestCase{
+		Actions: append(vectorWarningSetup(),
+			&action.AddDoc{DocMap: map[string]any{"name": "noVector", "age": 50}},
+			&action.Request{
+				Request: `query {
+					User(filter: {age: {_gt: 35}}, order: {_alias: {sim: DESC}}, limit: 5){
+						name
+						sim: SIMILARITY(vector: {vector: [1, 0, 0]})
+					}
+				}`,
+				// Both score 0, so their relative order is not defined.
+				NonOrderedResults: true,
+				Results: map[string]any{
+					"User": []map[string]any{
+						{"name": "z", "sim": testUtils.CosineSimilarity([]float64{0, 0, 1}, []float64{1, 0, 0})},
+						{"name": "noVector", "sim": float64(0)},
+					},
+				},
+				ExpectedWarnings: unusedIndexWarning("filterTooSelective"),
+			},
+		),
+	}
+
+	testUtils.ExecuteTestCase(t, test)
+}
+
+// An alias is only computed after the scan, so the scan cannot tell which of the index's documents
+// pass the filter, and the whole collection is read.
+func TestVectorIndexWarning_FilterOnAlias_ReportsWarning(t *testing.T) {
 	test := testUtils.TestCase{
 		Actions: append(vectorWarningSetup(),
 			&action.Request{
 				Request: `query {
-					User(filter: {age: {_gt: 15}}, order: {_alias: {sim: DESC}}, limit: 2){
+					User(filter: {_alias: {sim: {_gt: 0.5}}}, order: {_alias: {sim: DESC}}, limit: 2){
 						name
 						sim: SIMILARITY(vector: {vector: [1, 0, 0]})
 					}
 				}`,
 				Results: map[string]any{
 					"User": []map[string]any{
+						{"name": "x", "sim": testUtils.CosineSimilarity([]float64{1, 0, 0}, []float64{1, 0, 0})},
 						{"name": "xy", "sim": testUtils.CosineSimilarity([]float64{0.9, 0.4, 0}, []float64{1, 0, 0})},
-						{"name": "y", "sim": testUtils.CosineSimilarity([]float64{0, 1, 0}, []float64{1, 0, 0})},
 					},
 				},
 				ExpectedWarnings: unusedIndexWarning("filter"),
@@ -157,27 +280,53 @@ func TestVectorIndexWarning_WithFilter_ReportsWarning(t *testing.T) {
 	testUtils.ExecuteTestCase(t, test)
 }
 
-// Filtering the k nearest after the fact can reject all of them and return nothing while matching
-// documents exist. Only "z" matches age > 35 and it is the farthest from the query, so asking the
-// graph for k=1 would find "x", drop it, and return an empty result.
-func TestVectorIndexWarning_SelectiveFilter_StillReturnsMatchingDocs(t *testing.T) {
+// A related document's fields are checked after the join, so the scan cannot tell which of the index's
+// documents pass, and the whole collection is read. The condition is a negation on purpose: checked at
+// the scan, where the related document is not loaded, it would pass every document, so the query
+// would stop at "x" and "xy" (the nearest) only for the join to drop both and return nothing.
+func TestVectorIndexWarning_FilterOnRelatedDocument_ReportsWarning(t *testing.T) {
 	test := testUtils.TestCase{
-		Actions: append(vectorWarningSetup(),
+		Actions: []any{
+			&action.AddCollection{
+				SDL: `
+					type Team {
+						name: String
+						users: [User]
+					}
+
+					type User {
+						name: String
+						team: Team
+						vector: [Float32!] @index(vector: {dimensions: 3, hnsw: {metric: COSINE}})
+					}
+				`,
+			},
+			&action.AddDoc{CollectionID: 0, DocMap: map[string]any{"name": "near"}},
+			&action.AddDoc{CollectionID: 0, DocMap: map[string]any{"name": "far"}},
+			&action.AddDoc{CollectionID: 1, DocMap: map[string]any{
+				"name": "x", "team": testUtils.NewDocIndex(0, 1), "vector": []float32{1, 0, 0},
+			}},
+			&action.AddDoc{CollectionID: 1, DocMap: map[string]any{
+				"name": "xy", "team": testUtils.NewDocIndex(0, 1), "vector": []float32{0.9, 0.4, 0},
+			}},
+			&action.AddDoc{CollectionID: 1, DocMap: map[string]any{
+				"name": "y", "team": testUtils.NewDocIndex(0, 0), "vector": []float32{0, 1, 0},
+			}},
 			&action.Request{
 				Request: `query {
-					User(filter: {age: {_gt: 35}}, order: {_alias: {sim: DESC}}, limit: 1){
+					User(filter: {team: {name: {_neq: "far"}}}, order: {_alias: {sim: DESC}}, limit: 1){
 						name
 						sim: SIMILARITY(vector: {vector: [1, 0, 0]})
 					}
 				}`,
 				Results: map[string]any{
 					"User": []map[string]any{
-						{"name": "z", "sim": testUtils.CosineSimilarity([]float64{0, 0, 1}, []float64{1, 0, 0})},
+						{"name": "y", "sim": testUtils.CosineSimilarity([]float64{0, 1, 0}, []float64{1, 0, 0})},
 					},
 				},
 				ExpectedWarnings: unusedIndexWarning("filter"),
 			},
-		),
+		},
 	}
 
 	testUtils.ExecuteTestCase(t, test)
