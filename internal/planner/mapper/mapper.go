@@ -983,7 +983,8 @@ func getRequestables(
 					Index: index,
 					Name:  f.Name,
 				},
-				Vector: f.Vector,
+				Vector:        f.Vector,
+				MaxCandidates: f.MaxCandidates,
 				SimilarityTarget: Targetable{
 					Field: Field{
 						Index: mapping.FirstIndexOfName(f.Target),

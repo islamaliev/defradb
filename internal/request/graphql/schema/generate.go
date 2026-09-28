@@ -922,6 +922,10 @@ func (g *Generator) genSimilarityFieldConfig(obj *gql.Object) (gql.Field, error)
 					Type:        gql.NewNonNull(gql.NewList(listType.OfType)),
 					Description: schemaTypes.SimilarityArgDescription,
 				},
+				schemaTypes.SimilarityArgMaxCandidates: &gql.InputObjectFieldConfig{
+					Type:        gql.Int,
+					Description: schemaTypes.SimilarityArgMaxCandidatesDescription,
+				},
 			},
 		})
 		err := g.appendIfNotExists(inputObject)

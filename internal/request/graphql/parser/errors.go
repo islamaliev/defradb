@@ -43,3 +43,11 @@ func NewErrSimilarityOnNonVectorField(fieldName string, fieldType string) error 
 		errors.NewKV("Type", fieldType),
 	)
 }
+
+const errInvalidSimilarityMaxCandidates string = "similarity maxCandidates must be at least 1"
+
+// NewErrInvalidSimilarityMaxCandidates returns an error indicating that similarity was given a
+// maxCandidates that would let the vector index examine nothing.
+func NewErrInvalidSimilarityMaxCandidates(value int32) error {
+	return errors.New(errInvalidSimilarityMaxCandidates, errors.NewKV("MaxCandidates", value))
+}

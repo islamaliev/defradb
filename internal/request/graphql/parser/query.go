@@ -245,10 +245,19 @@ func parseSimilarity(
 	arguments := gql.GetArgumentValues(fieldDef.Args, field.Arguments, exe.VariableValues)
 	var target string
 	var vector any
+	var maxCandidates immutable.Option[uint64]
 	for _, argument := range field.Arguments {
 		target = argument.Name.Value
 		v := arguments[target].(map[string]any)
 		vector = v[types.SimilarityArgVector]
+		if m, ok := v[types.SimilarityArgMaxCandidates].(int32); ok {
+			// Zero would let the index examine nothing, and a negative value has no meaning, so
+			// neither can be what the caller wants.
+			if m < 1 {
+				return nil, NewErrInvalidSimilarityMaxCandidates(m)
+			}
+			maxCandidates = immutable.Some(uint64(m))
+		}
 	}
 	// The argument names the field to compare against, so without one there is nothing to
 	// compare. The mapper looks the target up by name and would panic on the empty name.
@@ -261,8 +270,9 @@ func parseSimilarity(
 			Name:  field.Name.Value,
 			Alias: getFieldAlias(field),
 		},
-		Target: target,
-		Vector: vector,
+		Target:        target,
+		Vector:        vector,
+		MaxCandidates: maxCandidates,
 	}, nil
 }
 

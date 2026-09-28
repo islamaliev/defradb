@@ -77,6 +77,14 @@ func TestCollectionVersionIntrospection_SimilarityCapableFieldIntArray(t *testin
 										"type": map[string]any{
 											"inputFields": []any{
 												map[string]any{
+													"name": "maxCandidates",
+													"type": map[string]any{
+														"kind":   "SCALAR",
+														"name":   "Int",
+														"ofType": nil,
+													},
+												},
+												map[string]any{
 													"name": "vector",
 													"type": map[string]any{
 														"kind": "NON_NULL",
@@ -168,6 +176,14 @@ func TestCollectionVersionIntrospection_SimilarityCapableFieldFloat32Array(t *te
 										"name": "someVector",
 										"type": map[string]any{
 											"inputFields": []any{
+												map[string]any{
+													"name": "maxCandidates",
+													"type": map[string]any{
+														"kind":   "SCALAR",
+														"name":   "Int",
+														"ofType": nil,
+													},
+												},
 												map[string]any{
 													"name": "vector",
 													"type": map[string]any{
@@ -263,6 +279,14 @@ func TestCollectionVersionIntrospection_SimilarityCapableFieldsIntArrayAndFloat3
 										"type": map[string]any{
 											"inputFields": []any{
 												map[string]any{
+													"name": "maxCandidates",
+													"type": map[string]any{
+														"kind":   "SCALAR",
+														"name":   "Int",
+														"ofType": nil,
+													},
+												},
+												map[string]any{
 													"name": "vector",
 													"type": map[string]any{
 														"kind": "NON_NULL",
@@ -289,6 +313,14 @@ func TestCollectionVersionIntrospection_SimilarityCapableFieldsIntArrayAndFloat3
 										"name": "someVectorInt",
 										"type": map[string]any{
 											"inputFields": []any{
+												map[string]any{
+													"name": "maxCandidates",
+													"type": map[string]any{
+														"kind":   "SCALAR",
+														"name":   "Int",
+														"ofType": nil,
+													},
+												},
 												map[string]any{
 													"name": "vector",
 													"type": map[string]any{

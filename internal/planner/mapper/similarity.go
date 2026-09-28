@@ -10,7 +10,11 @@
 
 package mapper
 
-import "github.com/sourcenetwork/defradb/internal/core"
+import (
+	"github.com/sourcenetwork/immutable"
+
+	"github.com/sourcenetwork/defradb/internal/core"
+)
 
 // Similarity represents an cosine similarity operation definition.
 type Similarity struct {
@@ -23,4 +27,8 @@ type Similarity struct {
 
 	// The vector to compare the target field to.
 	Vector any
+
+	// MaxCandidates caps how many documents the vector index may examine. See
+	// [request.Similarity.MaxCandidates].
+	MaxCandidates immutable.Option[uint64]
 }

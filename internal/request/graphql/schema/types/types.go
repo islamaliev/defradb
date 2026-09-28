@@ -90,7 +90,8 @@ const (
 	FieldOrderASC  = "ASC"
 	FieldOrderDESC = "DESC"
 
-	SimilarityArgVector = "vector"
+	SimilarityArgVector        = "vector"
+	SimilarityArgMaxCandidates = "maxCandidates"
 )
 
 // OrderingEnum is an enum for the Ordering argument.

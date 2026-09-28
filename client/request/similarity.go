@@ -10,6 +10,8 @@
 
 package request
 
+import "github.com/sourcenetwork/immutable"
+
 // Similarity is a functional field that defines the
 // parameters to calculate the cosine similarity between two vectors.
 type Similarity struct {
@@ -23,4 +25,9 @@ type Similarity struct {
 	//
 	// It must be a field of type Int, Float32 or Float64. It must be the same type and length as Vector.
 	Target string
+
+	// MaxCandidates caps how many documents the target's vector index may examine to answer a
+	// filtered nearest-neighbour query. Without it the complete answer is always returned; with it
+	// the result can be short, which is reported as a warning.
+	MaxCandidates immutable.Option[uint64]
 }

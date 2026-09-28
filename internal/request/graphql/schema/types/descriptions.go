@@ -144,6 +144,14 @@ Returns how similar the given vector is to the specified field's value. The metr
 The vector to compare the field's value against. It must have the same number of
  dimensions as the values stored in the field.
 `
+	SimilarityArgMaxCandidatesDescription string = `
+The most documents the field's vector index may examine to answer a filtered nearest-neighbour
+ query. Leave it out to always get the complete answer: the index is searched further until the
+ limit is filled, and the whole collection is read if that is cheaper. Set it to cap the work
+ instead; the result can then hold fewer documents than the limit even though more match, and a
+ VECTOR_CANDIDATE_LIMIT_REACHED warning says so. A value below the limit plus offset is raised to
+ it. It has no effect when the field has no vector index or the query does not use it.
+`
 	booleanOperatorBlockDescription string = `
 These are the set of filter operators available for use when filtering on Boolean
  values.
